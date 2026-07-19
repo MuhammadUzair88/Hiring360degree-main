@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+/*
+  Tokens must live inside @theme (not :root) so Tailwind v4 turns them
+  into real utility classes — bg-primary-800, text-secondary-300, etc.
+  Anything left in :root stays a plain CSS variable and only works
+  with bracket syntax, e.g. bg-[var(--foo)].
+*/
+@theme {
+  /* Primary — Purple */
+  --color-primary-50:  #F5F3FF;
+  --color-primary-100: #EDE9FE;
+  --color-primary-200: #DDD6FE;
+  --color-primary-300: #C4B5FD;
+  --color-primary-400: #A78BFA;
+  --color-primary-500: #8B5CF6;
+  --color-primary-600: #7C3AED;
+  --color-primary-700: #6D28D9;
+  --color-primary-800: #5B21B6;
+  --color-primary-900: #4C1D95;
+
+  /* Secondary — White */
+  --color-secondary-50:  #FFFFFF;
+  --color-secondary-100: #F9FAFB;
+  --color-secondary-200: #F3F4F6;
+  --color-secondary-300: #E5E7EB;
+  --color-secondary-400: #D1D5DB;
+
+  /* Text Sizes */
+  --text-xs:   0.75rem;   /* 12px — small labels, timestamps */
+  --text-sm:   0.875rem;  /* 14px — captions, helper text */
+  --text-base: 1rem;      /* 16px — body text (default) */
+  --text-lg:   1.125rem;  /* 18px — emphasized body text */
+  --text-xl:   1.25rem;   /* 20px — small headings */
+  --text-2xl:  1.5rem;    /* 24px — section headings */
+  --text-3xl:  1.875rem;  /* 30px — page headings */
+  --text-4xl:  2.25rem;   /* 36px — hero headings */
+
+  /* Font family */
+  --font-sans: 'Poppins', sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+}
