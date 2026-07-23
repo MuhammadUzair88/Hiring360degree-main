@@ -1,31 +1,15 @@
+
+
 import React from "react";
 import { useLocation } from "react-router-dom";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Menu, PanelLeft, Download } from "lucide-react";
+import logoIcon from "../../assets/logo.svg";
 
-/**
- * SecondaryHeader
- *
- * Header bar shown alongside SecondarySidebar (the per-job sub navigation:
- * Job Overview, Candidate Intake, HR Round, Technical Round, Offer Letter).
- *
- * Title and subtitle change automatically based on the active route (via
- * useLocation, matched against PAGE_CONFIG below — the same keys used in
- * SecondarySidebar's navItems `to` paths). The action button, however, is
- * a single constant CTA ("Export List") shown the same way on every page —
- * it does not change per section.
- *
- * You can still pass `page` explicitly to override route auto-detection,
- * and `title` / `subtitle` / `ctaLabel` always win over the defaults if
- * provided.
- *
- * Colors, type scale and font all come from the design tokens defined in
- * index.css (`@theme`) — primary-* (purple), secondary-* (white/gray),
- * text-* sizes, and the Poppins font-sans stack.
- */
+const DEFAULT_CTA_LABEL = "Download";
 
 // Keys mirror the last `to` segment used in SecondarySidebar's navItems.
 const PAGE_CONFIG = {
-  "job-overiew": {
+  "": {
     title: "Job Overview",
     subtitle: "Full details and settings for this job advertisement.",
   },
@@ -33,13 +17,9 @@ const PAGE_CONFIG = {
     title: "Candidate Intake",
     subtitle: "Review and move applicants through the pipeline.",
   },
-  "hr-round": {
-    title: "HR Round",
-    subtitle: "Manage candidates currently in the HR interview stage.",
-  },
-  "technical-round": {
-    title: "Technical Round",
-    subtitle: "Manage candidates currently in the technical interview stage.",
+  rounds: {
+    title: "Rounds",
+    subtitle: "Manage candidates currently in the interview rounds.",
   },
   "offer-letter": {
     title: "Offer Letter",
@@ -47,14 +27,11 @@ const PAGE_CONFIG = {
   },
 };
 
-// The single, consistent action shown on every page.
-const DEFAULT_CTA_LABEL = "Export List";
-
 // Pulls the last non-empty segment off the current pathname, e.g.
-// "/advertisement/job/hr-round" -> "hr-round".
+// "/advertisement/job/rounds" -> "rounds".
 function getPageKeyFromPath(pathname) {
   const segments = pathname.split("/").filter(Boolean);
-  return segments[segments.length - 1];
+  return segments[segments.length - 1] ?? "";
 }
 
 export default function SecondaryHeader({
@@ -65,35 +42,65 @@ export default function SecondaryHeader({
   onSearch,
   onFilter,
   onCtaClick,
+  onMenuClick = () => {},
+  onJobMenuClick = () => {},
   showSearch = true,
   showFilter = true,
   showCta = true,
+  orgName = "Hiring 360",
 }) {
   const location = useLocation();
   const derivedPage = page ?? getPageKeyFromPath(location.pathname);
 
   const config = PAGE_CONFIG[derivedPage] ?? {};
-  const resolvedTitle = title ?? config.title ?? "Untitled";
-  const resolvedSubtitle = subtitle ?? config.subtitle ?? "";
+  const resolvedTitle = title ?? config.title ?? "Job Overview";
+  const resolvedSubtitle =
+    subtitle ?? config.subtitle ?? "Full details and settings for this job advertisement.";
 
   return (
-    <header className="self-stretch h-20 px-8 bg-secondary-50 border-b border-secondary-300 flex justify-between items-center font-sans">
-      {/* Title + subtitle */}
-      <div className="flex flex-col justify-center">
-        <h1 className="text-slate-900 text-2xl font-semibold leading-8">
-          {resolvedTitle}
-        </h1>
-        {resolvedSubtitle && (
-          <p className="text-gray-600 text-sm font-normal leading-5">
-            {resolvedSubtitle}
-          </p>
-        )}
+    <header className="app-header font-sans">
+      {/* Menu buttons + logo + title */}
+      <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          aria-label="Open menu"
+          className="app-menu-btn"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+         <img
+          src={logoIcon}
+          alt={orgName}
+          className="sm:hidden h-8 w-8 shrink-0"
+        />
+        <button
+          type="button"
+          onClick={onJobMenuClick}
+          aria-label="Open job menu"
+          className="app-jobmenu-btn"
+        >
+          <PanelLeft className="w-5 h-5" />
+        </button>
+
+       
+
+        <div className="flex flex-col justify-center min-w-0">
+          <h1 className="text-slate-900 text-lg sm:text-2xl font-semibold leading-6 sm:leading-8 truncate">
+            {resolvedTitle}
+          </h1>
+          {resolvedSubtitle && (
+            <p className="hidden md:block text-gray-600 text-sm font-normal leading-5 truncate">
+              {resolvedSubtitle}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         {(showSearch || showFilter) && (
-          <div className="flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-1">
             {showSearch && (
               <button
                 type="button"
@@ -121,9 +128,11 @@ export default function SecondaryHeader({
           <button
             type="button"
             onClick={onCtaClick}
-            className="px-6 py-2.5 bg-primary-800 rounded-lg shadow-sm text-secondary-50 text-base font-semibold leading-6 hover:bg-primary-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2"
+            aria-label={ctaLabel}
+            className="flex items-center gap-2 px-3 sm:px-6 py-2.5 bg-primary-800 rounded-lg shadow-sm text-secondary-50 text-base font-semibold leading-6 hover:bg-primary-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2"
           >
-            {ctaLabel}
+            <Download className="w-4 h-4 sm:hidden" />
+            <span className="hidden sm:inline">{ctaLabel}</span>
           </button>
         )}
       </div>

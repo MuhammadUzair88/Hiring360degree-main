@@ -19,8 +19,7 @@ function App() {
       <Route element={<SecondaryLayout />}>
         <Route path="/advertisement/job/" element={<div />} />
         <Route path="/advertisement/job/candidate-intake" element={<div />} />
-        <Route path="/advertisement/job/hr-round" element={<div />} />
-        <Route path="/advertisement/job/technical-round" element={<div />} />
+        <Route path="/advertisement/job/rounds" element={<div />} />
         <Route path="/advertisement/job/offer-letter" element={<div />} />
       </Route>
     </Routes>

@@ -40,9 +40,183 @@
 
   /* Font family */
   --font-sans: 'Poppins', sans-serif;
+
+  /*
+    Breakpoints — aligned to Material Design 3 window size classes.
+    No prefix   = compact  (below 600px)  — phones
+    sm:         = medium   (600–839px)    — small tablets
+    md:         = expanded (840–1199px)   — large tablets / small laptops
+    lg:         = large    (1200–1599px)  — desktop
+    xl:         = extra-large (1600px+)   — wide desktop
+    MD3 only defines 4 thresholds, so Tailwind's 5th default (2xl) is dropped.
+  */
+  --breakpoint-sm: 37.5rem;   /* 600px */
+  --breakpoint-md: 52.5rem;   /* 840px */
+  --breakpoint-lg: 75rem;     /* 1200px */
+  --breakpoint-xl: 100rem;    /* 1600px */
+  --breakpoint-2xl: initial;
 }
 
 body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
+}
+
+/*
+  Shared responsive shell classes.
+  These are the ONLY place breakpoint behavior for the app shell lives.
+  Header, layout and sidebar components apply these class names instead of
+  repeating sm:/md:/lg: utility strings — one file to edit, six components
+  and all 85 pages stay in sync automatically.
+*/
+@layer components {
+  /* Header bar shared by OrgHeader and SecondaryHeader */
+  .app-header {
+    @apply h-16 sm:h-20 px-4 sm:px-6 lg:px-8 shrink-0 bg-secondary-50 border-b border-secondary-300
+           flex items-center justify-between gap-3;
+  }
+
+  /* Hamburger button that opens MainSidebar's drawer — only needed below 600px,
+     since MainSidebar becomes a permanent (collapsible) rail from 600px up. */
+  .app-menu-btn {
+    @apply sm:hidden p-2 -ml-2 rounded-full text-gray-700 hover:bg-secondary-200 transition-colors
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2;
+  }
+
+  /* Button that opens SecondarySidebar's drawer — only needed below 1200px,
+     since SecondarySidebar becomes a permanent panel from 1200px up. */
+  .app-jobmenu-btn {
+    @apply lg:hidden p-2 rounded-full text-gray-700 hover:bg-secondary-200 transition-colors
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2;
+  }
+
+  /*
+    MainSidebar shell:
+    - below 600px: off-canvas drawer (mobileOpen/onClose from the hamburger).
+    - 600px+ (tablet AND desktop): permanent sticky rail. Defaults to the
+      full w-60 rail with labels; the circular toggle (.app-sidebar-toggle)
+      collapses it to a w-18 icon rail — same behavior at tablet and desktop,
+      no more separate "auto icon-only" tier in between.
+  */
+  .app-sidebar-main {
+    @apply fixed inset-y-0 left-0 z-40 w-64 -translate-x-full transition-all duration-200 ease-in-out
+           sm:static sm:z-auto sm:translate-x-0 sm:w-60;
+  }
+  .app-sidebar-main.is-open {
+    @apply translate-x-0;
+  }
+  .app-sidebar-main.is-collapsed {
+    @apply sm:w-18;
+  }
+
+  /* Full brand mark: shown in the compact drawer and the expanded rail (default). */
+  .app-sidebar-main .org-name {
+    @apply block;
+  }
+  /* Icon-only mark: hidden by default, only appears once collapsed at sm+. */
+  .app-sidebar-main .org-logo-icon {
+    @apply hidden;
+  }
+  .app-sidebar-main.is-collapsed .org-name {
+    @apply sm:hidden;
+  }
+  .app-sidebar-main.is-collapsed .org-logo-icon {
+    @apply sm:block;
+  }
+
+  /* Nav labels + user footer text: visible by default, hidden once
+     collapsed at sm+ (tablet and desktop alike). */
+  .app-sidebar-main.is-collapsed .nav-label,
+  .app-sidebar-main.is-collapsed .user-footer-text {
+    @apply sm:hidden;
+  }
+
+  /* Circular collapse/expand toggle — shared visual style, hidden by
+     default. Each sidebar below turns it on where it makes sense. */
+  .app-sidebar-toggle {
+    @apply hidden absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 items-center justify-center
+           rounded-full bg-secondary-50 border border-secondary-300 text-gray-600 shadow-sm
+           hover:bg-secondary-200 hover:text-primary-800 transition-colors
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2;
+  }
+  /* MainSidebar: the hamburger owns the mobile drawer, so the circle only
+     takes over once the sidebar becomes a static rail — tablet AND desktop. */
+  .app-sidebar-main .app-sidebar-toggle {
+    @apply hidden sm:flex;
+  }
+  /* SecondarySidebar: this is the DESKTOP collapse/expand control only.
+     Opening the drawer below 1200px is a separate control — see
+     .app-sidebar-open-tab — because a button inside this same off-canvas
+     panel can't be the thing that reveals the panel itself. */
+  .app-sidebar-secondary .app-sidebar-toggle {
+    @apply hidden lg:flex;
+  }
+
+  /* Small tab that OPENS the SecondarySidebar drawer below 1200px. Rendered
+     outside <aside> in the component and positioned independently here —
+     a transform on a parent also carries position:fixed/absolute children
+     off-screen with it, so this can never live inside the drawer itself. */
+  .app-sidebar-open-tab {
+    @apply lg:hidden fixed top-1/2 left-0 -translate-y-1/2 z-40 w-6 h-10 flex items-center justify-center
+           rounded-r-lg border border-l-0 border-secondary-300 bg-secondary-50 text-gray-600 shadow-sm
+           hover:bg-secondary-200 hover:text-primary-800 transition-colors
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2;
+  }
+
+  /*
+    SecondarySidebar shell:
+    - below 1200px: off-canvas drawer, opened via the .app-sidebar-open-tab
+      tab (or mobileOpen from a parent, if it's wired), closed via the
+      backdrop, the in-panel X, or a nav click.
+    - 1200px+: permanent sticky panel. The circular toggle collapses it to
+      a w-18 icon rail.
+  */
+  .app-sidebar-secondary {
+    @apply fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transition-all duration-200 ease-in-out
+           lg:static lg:z-auto lg:translate-x-0 lg:shrink-0;
+  }
+  .app-sidebar-secondary.is-open {
+    @apply translate-x-0;
+  }
+  .app-sidebar-secondary.is-collapsed {
+    @apply lg:w-18;
+  }
+  .app-sidebar-secondary .job-header-wrap {
+    @apply justify-between;
+  }
+  .app-sidebar-secondary.is-collapsed .job-header-wrap {
+    @apply lg:justify-center;
+  }
+  .app-sidebar-secondary .job-header-dot {
+    @apply hidden;
+  }
+  .app-sidebar-secondary.is-collapsed .job-header-dot {
+    @apply lg:block;
+  }
+  .app-sidebar-secondary.is-collapsed .job-header-text {
+    @apply lg:hidden;
+  }
+  .app-sidebar-secondary .app-subnav-item {
+    @apply justify-between;
+  }
+  .app-sidebar-secondary.is-collapsed .app-subnav-item {
+    @apply lg:justify-center;
+  }
+  .app-sidebar-secondary.is-collapsed .subnav-label {
+    @apply lg:hidden;
+  }
+
+  /* Shared backdrop for either drawer. Must stay `fixed` to cover the full
+     viewport regardless of scroll position — never pair this class with
+     `absolute`/`relative` utilities in JSX, and don't add `relative` to any
+     ancestor "to contain it": `fixed` needs no positioned ancestor, and
+     adding one only invites this class of bug. */
+  .app-drawer-backdrop {
+    @apply fixed inset-0 z-30 bg-black/40;
+  }
+
+  /* Page content area used inside both layouts */
+  .app-content {
+    @apply flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-x-hidden;
+  }
 }
