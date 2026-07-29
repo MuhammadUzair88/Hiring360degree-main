@@ -12,27 +12,34 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// Sub-navigation for a single job advertisement.
-const navItems = [
-  {
-    label: "Advertisement Overview",
-    to: "/advertisement/job",
-    icon: FileText,
-    end: true,
-  },
-  {
-    label: "Candidate Intake",
-    to: "/advertisement/job/candidate-intake",
-    icon: Users,
-    badge: "5 Applied", // dummy data — replace with real applicant count later
-  },
-  { label: "Round", to: "/advertisement/job/rounds", icon: UserCheck },
-  {
-    label: "Offer Letter",
-    to: "/advertisement/job/offer-letter",
-    icon: FileSignature,
-  },
-];
+// Sub-navigation for a single job advertisement. Built as a function
+// (rather than a static module-level array) because every link needs
+// the current job's id baked in — without it, navigating away from
+// Overview would lose which job you were looking at.
+function buildNavItems(jobId) {
+  const base = jobId ? `/advertisement/job/${jobId}` : "/advertisement/job";
+
+  return [
+    {
+      label: "Advertisement Overview",
+      to: base,
+      icon: FileText,
+      end: true,
+    },
+    {
+      label: "Candidate Intake",
+      to: `${base}/candidate-intake`,
+      icon: Users,
+      badge: "5 Applied", // dummy data — replace with real applicant count later
+    },
+    { label: "Round", to: `${base}/rounds`, icon: UserCheck },
+    {
+      label: "Offer Letter",
+      to: `${base}/offer-letter`,
+      icon: FileSignature,
+    },
+  ];
+}
 
 const COLLAPSE_STORAGE_KEY = "hiring360:secondarySidebarCollapsed";
 
@@ -45,6 +52,7 @@ const COLLAPSE_STORAGE_KEY = "hiring360:secondarySidebarCollapsed";
  *   back). The choice is remembered in localStorage.
  */
 export default function SecondarySidebar({
+  jobId,
   jobTitle = "Senior Frontend Developer",
   status = "In Progress",
   progress = 40, // percentage, 0-100
@@ -52,6 +60,8 @@ export default function SecondarySidebar({
   mobileOpen = false,
   onClose = () => {},
 }) {
+  const navItems = buildNavItems(jobId);
+
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(COLLAPSE_STORAGE_KEY) === "true";

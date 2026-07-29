@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+/* Bold (700) and Extrabold (800) are intentionally NOT loaded. Nothing in
+   the site should render at bold weight — see the --font-weight-* overrides
+   below, which make sure even a stray `font-bold` class can't get bold. */
 
 @import "tailwindcss";
 
@@ -28,18 +31,95 @@
   --color-secondary-300: #E5E7EB;
   --color-secondary-400: #D1D5DB;
 
-  /* Text Sizes */
+  /*
+    Status colors — THE source of truth for every "good / needs
+    attention / bad / saved" signal across the app (AI score bars and
+    rings, verdict badges, status pills, action button hovers). Before
+    this, each component reached for its own raw emerald/amber/red/blue
+    Tailwind class, which is exactly how the drawer ended up with four
+    slightly different greens. Change a hex here and every consumer —
+    scorecard, badges, buttons — follows automatically.
+  */
+  --color-success-50:  #ECFDF5;
+  --color-success-100: #D1FAE5;
+  --color-success-200: #A7F3D0;
+  --color-success-500: #10B981;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+
+  --color-warning-50:  #FFFBEB;
+  --color-warning-100: #FEF3C7;
+  --color-warning-200: #FDE68A;
+  --color-warning-500: #F59E0B;
+  --color-warning-600: #D97706;
+  --color-warning-700: #B45309;
+
+  --color-danger-50:  #FEF2F2;
+  --color-danger-100: #FEE2E2;
+  --color-danger-200: #FECACA;
+  --color-danger-500: #EF4444;
+  --color-danger-600: #DC2626;
+  --color-danger-700: #B91C1C;
+
+  --color-info-50:  #EFF6FF;
+  --color-info-100: #DBEAFE;
+  --color-info-200: #BFDBFE;
+  --color-info-500: #3B82F6;
+  --color-info-600: #2563EB;
+  --color-info-700: #1D4ED8;
+
+  /* Text Sizes — generic scale (badges, tags, one-off utility use) */
   --text-xs:   0.75rem;   /* 12px — small labels, timestamps */
-  --text-sm:   0.875rem;  /* 14px — captions, helper text */
-  --text-base: 1rem;      /* 16px — body text (default) */
+  --text-sm:   0.875rem;  /* 14px — captions, helper text, buttons/nav (small) */
+  --text-base: 1rem;      /* 16px — body text (default), buttons/nav (large) */
   --text-lg:   1.125rem;  /* 18px — emphasized body text */
   --text-xl:   1.25rem;   /* 20px — small headings */
   --text-2xl:  1.5rem;    /* 24px — section headings */
   --text-3xl:  1.875rem;  /* 30px — page headings */
   --text-4xl:  2.25rem;   /* 36px — hero headings */
 
+  /* Body copy — pairs with the `.text-base` utility above */
+  --text-base--line-height: 1.5rem; /* 24px */
+
+  /* Caption — secondary/tertiary detail text, one step below --text-sm */
+  --text-caption: 0.8125rem; /* 13px */
+  --text-caption--line-height: 1.125rem; /* 18px */
+
+  /*
+    Heading Sizes — THE source of truth for h1–h6 everywhere in the app.
+    These map to real Tailwind utilities (text-h1 … text-h6) and are also
+    applied to the bare <h1>–<h6> tags below, so any page using a plain
+    heading element — no matter which of the 85 pages it's on — gets the
+    same size automatically, no utility classes required.
+  */
+  --text-h6: 1.125rem;   /* 18px */
+  --text-h6--line-height: 1.4;
+  --text-h5: 1.3125rem;  /* 21px */
+  --text-h5--line-height: 1.35;
+  --text-h4: 1.625rem;   /* 26px */
+  --text-h4--line-height: 1.3;
+  --text-h3: 2rem;       /* 32px */
+  --text-h3--line-height: 1.25;
+  --text-h2: 2.75rem;    /* 44px */
+  --text-h2--line-height: 1.2;
+  --text-h1: 3.375rem;   /* 54px */
+  --text-h1--line-height: 1.15;
+
   /* Font family */
   --font-sans: 'Poppins', sans-serif;
+
+  /*
+    Font Weights — bold is banned site-wide. Tailwind's `font-bold`,
+    `font-extrabold` and `font-black` utilities normally render 700/800/900;
+    here they're all capped at 600 (semibold). So even if `font-bold` is
+    still sitting in old JSX somewhere across the 85 pages, it renders as
+    semibold instead of bold — no need to hunt every usage down by hand.
+    `font-normal` (400) and `font-medium` (500) are untouched and safe to use.
+  */
+  --font-weight-semibold: 600;
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 600;
+  --font-weight-black: 600;
 
   /*
     Breakpoints — aligned to Material Design 3 window size classes.
@@ -60,6 +140,26 @@
 body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
+  line-height: var(--text-base--line-height); /* 24px */
+  font-weight: var(--font-weight-normal, 400);
+}
+
+/*
+  Base heading styles. Every plain <h1>–<h6> in the app inherits the
+  correct size + weight automatically — pages don't need to remember to
+  add text-h3/font-semibold by hand, which is where the inconsistency
+  crept in before. Override with utility classes only for real exceptions.
+*/
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--font-weight-semibold); /* semibold everywhere, never bold */
+  }
+  h1 { font-size: var(--text-h1); line-height: var(--text-h1--line-height); }
+  h2 { font-size: var(--text-h2); line-height: var(--text-h2--line-height); }
+  h3 { font-size: var(--text-h3); line-height: var(--text-h3--line-height); }
+  h4 { font-size: var(--text-h4); line-height: var(--text-h4--line-height); }
+  h5 { font-size: var(--text-h5); line-height: var(--text-h5--line-height); }
+  h6 { font-size: var(--text-h6); line-height: var(--text-h6--line-height); }
 }
 
 /*
@@ -218,5 +318,34 @@ body {
   /* Page content area used inside both layouts */
   .app-content {
     @apply flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-x-hidden;
+  }
+
+  /*
+    Candidate Intake — shared status colors.
+    Single source of truth for AI score bars/rings, verdict badges,
+    status pills, and action buttons across every CandidateIntake
+    component. Change a token above and every card/drawer follows —
+    no more hunting through JSX for a stray bg-emerald-500.
+  */
+  .app-score-bar-strong  { @apply bg-success-500; }
+  .app-score-bar-average { @apply bg-warning-500; }
+  .app-score-bar-weak    { @apply bg-danger-500; }
+
+  .app-score-ring-strong  { @apply stroke-success-500; }
+  .app-score-ring-average { @apply stroke-warning-500; }
+  .app-score-ring-weak    { @apply stroke-danger-500; }
+
+  /* Drag-and-drop affordances for the Candidate Intake board */
+  .app-candidate-card {
+    @apply cursor-pointer transition-[opacity,transform,box-shadow] duration-150;
+  }
+  .app-candidate-card.is-dragging {
+    @apply opacity-50 scale-[0.98] cursor-grabbing;
+  }
+  .app-candidate-column-drop {
+    @apply transition-colors duration-150 rounded-xl;
+  }
+  .app-candidate-column-drop.is-drag-over {
+    @apply outline outline-2 outline-dashed outline-primary-800/40 bg-primary-800/5;
   }
 }

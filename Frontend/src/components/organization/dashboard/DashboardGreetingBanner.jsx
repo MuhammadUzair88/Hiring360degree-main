@@ -3,8 +3,11 @@ import { dashboardGreeting } from "./data";
 
 /**
  * Page-level greeting shown at the top of the Dashboard Overview.
- * Purely presentational — swap `teamName`/`subtitle` via props once
- * the real signed-in org/user is available.
+ * Title = index.css's "page heading" size (`text-3xl` → 30px, per the
+ * comment on that token). Subtitle = index.css's default body-copy
+ * pairing (`text-base` + `leading-6`, matching --text-base--line-height
+ * exactly). These classes are shared class-for-class with
+ * AdvertisementPageHeader so every page header in the app matches.
  */
 export default function DashboardGreetingBanner({
   orgName = dashboardGreeting.orgName,
@@ -12,10 +15,10 @@ export default function DashboardGreetingBanner({
 }) {
   return (
     <div className="self-stretch flex flex-col justify-start items-start gap-1">
-      <h1 className="text-slate-900 text-2xl sm:text-3xl font-bold leading-tight">
+      <h1 className="text-black text-3xl font-semibold leading-tight">
         Good morning, {orgName}!
       </h1>
-      <p className="text-zinc-600 text-sm sm:text-base leading-6">{subtitle}</p>
+      <p className="text-black text-base leading-6">{subtitle}</p>
     </div>
   );
 }

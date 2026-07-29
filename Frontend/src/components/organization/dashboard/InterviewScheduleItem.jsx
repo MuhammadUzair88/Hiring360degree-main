@@ -11,11 +11,7 @@ export default function InterviewScheduleItem({
 }) {
   return (
     <div className="self-stretch p-4 bg-secondary-50 rounded-lg outline outline-1 outline-offset-[-1px] outline-secondary-300 flex items-center gap-4">
-      <img
-        src={avatarUrl}
-        alt={candidateName}
-        className="w-12 h-12 rounded-full object-cover shrink-0"
-      />
+      
 
       <div className="flex-1 min-w-0 flex flex-col">
         <span className="text-slate-900 text-base leading-6 truncate">{candidateName}</span>

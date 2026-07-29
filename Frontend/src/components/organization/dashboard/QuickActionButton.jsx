@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 /** One shortcut button/link inside QuickActionsPanel. */
-export default function QuickActionButton({ label, icon: Icon, to = "#" }) {
+export default function QuickActionButton({ label, icon: Icon, to = "" }) {
   return (
     <Link
       to={to}

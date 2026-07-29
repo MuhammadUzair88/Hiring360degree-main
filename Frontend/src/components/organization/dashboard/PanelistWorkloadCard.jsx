@@ -14,9 +14,9 @@ const workloadData = [
 ];
 
 const COLORS = [
-  "#2563EB",
-  "#F59E0B",
-  "#10B981",
+  "#6D28D9",
+  "#8B5CF6",
+  "#C4B5FD",
 ];
 
 function WorkloadTooltip({ active, payload }) {

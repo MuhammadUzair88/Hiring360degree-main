@@ -48,7 +48,7 @@ export const dashboardStats = [
     label: "Total Candidates",
     value: "1,284",
     icon: Users,
-    badgeClass: "bg-orange-50 text-orange-900",
+    badgeClass: "bg-secondary-200 text-primary-700",
     helperText: "Across all pipelines",
   },
   {
@@ -56,7 +56,7 @@ export const dashboardStats = [
     label: "Interviews",
     value: "56",
     icon: CalendarCheck,
-    badgeClass: "bg-blue-50 text-blue-600",
+    badgeClass: "bg-primary-100 text-primary-600",
     helperText: "Scheduled this week",
   },
   {
@@ -64,16 +64,16 @@ export const dashboardStats = [
     label: "Pending Offers",
     value: "12",
     icon: FileText,
-    badgeClass: "bg-orange-50 text-orange-500",
-    trend: { direction: "alert", label: "3 urgent", toneClass: "text-red-700" },
+    badgeClass: "bg-primary-100 text-primary-900",
+    trend: { direction: "alert", label: "3 urgent", toneClass: "text-primary-900" },
   },
   {
     id: "time-to-hire",
     label: "Avg. Time-to-Hire",
     value: "18d",
     icon: Clock,
-    badgeClass: "bg-emerald-50 text-emerald-600",
-    trend: { direction: "down", label: "-2d vs last month", toneClass: "text-emerald-600" },
+    badgeClass: "bg-secondary-200 text-primary-800",
+    trend: { direction: "down", label: "-2d vs last month", toneClass: "text-primary-700" },
   },
 ];
 
@@ -153,9 +153,9 @@ export const panelistWorkload = [
 
 /** Quick action shortcuts. */
 export const quickActions = [
-  { id: "qa-new-job", label: "New Job Posting", icon: PlusCircle, to: "/advertisement/create" },
-  { id: "qa-add-interviewer", label: "Add Interviewer", icon: UserPlus, to: "/interviewer/create" },
-  { id: "qa-share-pipeline", label: "Share Pipeline Link", icon: Share2, to: "#" },
+  { id: "qa-new-job", label: "New Job Posting", icon: PlusCircle, to: "/advertisement/add" },
+  { id: "qa-add-interviewer", label: "Add Interviewer", icon: UserPlus, to: "/interviewer" },
+  { id: "qa-share-pipeline", label: "Share Pipeline Link", icon: Share2, to: "/advertisement" },
 ];
 
 /** Recent activity timeline, newest first. */
@@ -166,7 +166,7 @@ export const recentActivity = [
     timestamp: "2 hours ago",
     location: "New York Office",
     icon: CheckCircle2,
-    iconBgClass: "bg-indigo-100",
+    iconBgClass: "bg-primary-100",
     iconColorClass: "text-primary-800",
   },
   {
@@ -175,8 +175,8 @@ export const recentActivity = [
     timestamp: "4 hours ago",
     location: "Technical Round",
     icon: MessageSquare,
-    iconBgClass: "bg-rose-200",
-    iconColorClass: "text-orange-900",
+    iconBgClass: "bg-secondary-200",
+    iconColorClass: "text-primary-700",
   },
   {
     id: "act-3",
@@ -184,8 +184,8 @@ export const recentActivity = [
     timestamp: "6 hours ago",
     location: "London Office",
     icon: Rss,
-    iconBgClass: "bg-sky-100",
-    iconColorClass: "text-gray-500",
+    iconBgClass: "bg-secondary-200",
+    iconColorClass: "text-primary-600",
   },
   {
     id: "act-4",
@@ -193,7 +193,7 @@ export const recentActivity = [
     timestamp: "Yesterday",
     location: "Seattle Office",
     icon: Send,
-    iconBgClass: "bg-indigo-100",
+    iconBgClass: "bg-primary-100",
     iconColorClass: "text-primary-800",
   },
   {
@@ -202,7 +202,46 @@ export const recentActivity = [
     timestamp: "Yesterday",
     location: "San Francisco",
     icon: UserX,
-    iconBgClass: "bg-rose-200",
-    iconColorClass: "text-red-700",
+    iconBgClass: "bg-primary-100",
+    iconColorClass: "text-primary-900",
   },
 ];
+
+/**
+ * Department-level breakdown for the "By Department" filter.
+ * Each department's Applied/Shortlisted/HR/Technical/Offer counts
+ * sum exactly to the global hiringFunnelStages totals above, so the
+ * two views stay mathematically consistent with each other.
+ */
+export const hiringFunnelDepartments = ["Engineering", "Design", "Marketing", "Sales"];
+
+export const hiringFunnelByDepartment = {
+  Engineering: [
+    { id: "applied", label: "Applied", value: 380 },
+    { id: "shortlisted", label: "Shortlisted", value: 152 },
+    { id: "hr-round", label: "HR Round", value: 88 },
+    { id: "technical", label: "Technical", value: 51 },
+    { id: "offer-sent", label: "Offer Sent", value: 16 },
+  ],
+  Design: [
+    { id: "applied", label: "Applied", value: 210 },
+    { id: "shortlisted", label: "Shortlisted", value: 74 },
+    { id: "hr-round", label: "HR Round", value: 39 },
+    { id: "technical", label: "Technical", value: 21 },
+    { id: "offer-sent", label: "Offer Sent", value: 7 },
+  ],
+  Marketing: [
+    { id: "applied", label: "Applied", value: 165 },
+    { id: "shortlisted", label: "Shortlisted", value: 58 },
+    { id: "hr-round", label: "HR Round", value: 33 },
+    { id: "technical", label: "Technical", value: 15 },
+    { id: "offer-sent", label: "Offer Sent", value: 5 },
+  ],
+  Sales: [
+    { id: "applied", label: "Applied", value: 95 },
+    { id: "shortlisted", label: "Shortlisted", value: 36 },
+    { id: "hr-round", label: "HR Round", value: 20 },
+    { id: "technical", label: "Technical", value: 8 },
+    { id: "offer-sent", label: "Offer Sent", value: 4 },
+  ],
+};
