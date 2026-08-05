@@ -1,8 +1,8 @@
 // InterviewerFormModal.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ShieldCheck, ChevronDown } from "lucide-react";
-import { evaluationRoundOptions, emptyInterviewerFormValues } from "./interviewerdata";
+import { X, ShieldCheck } from "lucide-react";
+import { emptyInterviewerFormValues } from "./interviewerdata";
 import { findInterviewer, addInterviewer, updateInterviewer } from "./InterviewerStore";
 
 /**
@@ -133,19 +133,12 @@ export default function InterviewerFormModal({ isOpen, interviewerId = null, onC
             <label htmlFor="interviewer-round" className="text-neutral-600 text-xs font-medium leading-4 tracking-tight">
               Evaluation Round
             </label>
-            <div className="relative">
-              <select
-                id="interviewer-round" required
-                value={values.round} onChange={handleChange("round")}
-                className="w-full h-12 pl-4 pr-10 py-2 bg-white rounded-xl outline outline-1 outline-offset-[-1px] outline-secondary-300 text-gray-900 text-base appearance-none focus:outline-2 focus:outline-primary-600 transition-colors"
-              >
-                <option value="" disabled>Select assigned round...</option>
-                {evaluationRoundOptions.map((round) => (
-                  <option key={round} value={round}>{round}</option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-neutral-600 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+            <input
+              id="interviewer-round" type="text" required
+              value={values.round} onChange={handleChange("round")}
+              placeholder="e.g. Technical Round or HR Round"
+              className="self-stretch h-12 px-4 py-3 bg-white rounded-xl outline outline-1 outline-offset-[-1px] outline-secondary-300 text-gray-900 text-base placeholder:text-zinc-500/60 focus:outline-2 focus:outline-primary-600 transition-colors"
+            />
           </div>
 
           <div className="p-4 bg-primary-50/50 rounded-xl outline outline-1 outline-offset-[-1px] outline-secondary-300/60 flex items-start gap-4">

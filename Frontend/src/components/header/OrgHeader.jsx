@@ -62,7 +62,7 @@ export default function OrgHeader({
         <div className="hidden sm:block w-px h-8 bg-secondary-300" />
 
         <Link
-          to="/advertisement/create"
+          to="/advertisement/add"
           aria-label="New Job Posting"
           className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-primary-800 text-white text-xs font-medium hover:bg-primary-700 transition-colors whitespace-nowrap"
         >

@@ -12,13 +12,7 @@ import { Users, Code2, UserCheck } from "lucide-react";
  * ------------------------------------------------------------------
  */
 
-/** Org summary card at the top of the Interviewer list page. */
-export const organizationSummary = {
-  name: "Hiring360 Enterprise",
-  industry: "Software Development",
-  location: "San Francisco, CA",
-  logoUrl: null, // falls back to the org's initial when empty
-};
+
 
 
 
@@ -48,9 +42,6 @@ export const pageContent = {
 /** Segmented filter control above the table. */
 export const interviewerFilterTabs = ["All", "Technical", "HR"];
 
-/** Options offered in the Evaluation Round <select> on the form. */
-export const evaluationRoundOptions = ["Technical", "HR"];
-
 /** How many rows the table shows per page. */
 export const DEFAULT_PAGE_SIZE = 3;
 
@@ -61,7 +52,7 @@ export const interviewerStatMeta = [
     label: "Total Interviewers",
     icon: Users,
     badgeClass: "bg-primary-50 text-primary-800",
-    trend: { direction: "up", label: "+4 this month", toneClass: "text-emerald-600" },
+    trend: { direction: "up", label: "+4 this month", toneClass: "text-primary-600" },
   },
   {
     id: "technical",
@@ -84,7 +75,10 @@ export const interviewerFormTrustBadges = [
   { id: "security", label: "Enterprise Security" },
 ];
 
-/** Blank starting values for the "Add Interviewer" form. */
+/** Blank starting values for the "Add Interviewer" form. Round is now a
+ *  free-text field (no fixed option list) in both the full-page form and
+ *  the modal — type whatever round name fits (e.g. "Technical", "HR",
+ *  "System Design", "Final Panel"). */
 export const emptyInterviewerFormValues = {
   name: "",
   email: "",
@@ -96,29 +90,172 @@ export const emptyInterviewerFormValues = {
  * `id` doubles as the route param used by /interviewer/edit/:id.
  */
 export const initialInterviewers = [
-  { id: "itv-01", name: "David Chen", role: "Senior Lead Engineer", email: "d.chen@hiring360.ai", round: "Technical", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-02", name: "Sarah Jenkins", role: "Talent Acquisition Partner", email: "s.jenkins@hiring360.ai", round: "HR", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-03", name: "Marcus Low", role: "Staff Data Scientist", email: "m.low@hiring360.ai", round: "Technical", status: "Inactive", avatarUrl: null },
-  { id: "itv-04", name: "Amara Okafor", role: "Marketing Lead", email: "a.okafor@hiring360.ai", round: "HR", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-05", name: "Michael Chen", role: "Staff Engineer", email: "mi.chen@hiring360.ai", round: "Technical", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-06", name: "Priya Sharma", role: "Engineering Manager", email: "p.sharma@hiring360.ai", round: "Technical", status: "Active", avatarUrl: null },
-  { id: "itv-07", name: "Daniel Kim", role: "People Operations Lead", email: "d.kim@hiring360.ai", round: "HR", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-08", name: "Olivia Martins", role: "Principal Engineer", email: "o.martins@hiring360.ai", round: "Technical", status: "Inactive", avatarUrl: null },
-  { id: "itv-09", name: "James Whitfield", role: "Recruiting Manager", email: "j.whitfield@hiring360.ai", round: "HR", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-10", name: "Elena Rossi", role: "Senior Backend Engineer", email: "e.rossi@hiring360.ai", round: "Technical", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-11", name: "Noah Bennett", role: "HR Business Partner", email: "n.bennett@hiring360.ai", round: "HR", status: "Active", avatarUrl: null },
-  { id: "itv-12", name: "Grace Liu", role: "Staff Frontend Engineer", email: "g.liu@hiring360.ai", round: "Technical", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-13", name: "Ahmed Hassan", role: "Engineering Director", email: "a.hassan@hiring360.ai", round: "Technical", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-14", name: "Rahul Verma", role: "Staff Systems Engineer", email: "r.verma@hiring360.ai", round: "Technical", status: "Inactive", avatarUrl: null },
-  { id: "itv-15", name: "Tom Becker", role: "DevOps Lead", email: "t.becker@hiring360.ai", round: "Technical", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-16", name: "Nina Torres", role: "People Experience Lead", email: "n.torres@hiring360.ai", round: "HR", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-17", name: "Ken Watanabe", role: "Staff Security Engineer", email: "k.watanabe@hiring360.ai", round: "Technical", status: "Active", avatarUrl: null },
-  { id: "itv-18", name: "Chloe Dubois", role: "Recruiting Coordinator", email: "c.dubois@hiring360.ai", round: "HR", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-19", name: "Lucas Ferreira", role: "Senior QA Engineer", email: "l.ferreira@hiring360.ai", round: "Technical", status: "Inactive", avatarUrl: null },
-  { id: "itv-20", name: "Meera Nair", role: "HR Generalist", email: "m.nair@hiring360.ai", round: "HR", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-21", name: "Ryan O'Connor", role: "Platform Engineer", email: "r.oconnor@hiring360.ai", round: "Technical", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-22", name: "Sofia Petrova", role: "Talent Acquisition Lead", email: "s.petrova@hiring360.ai", round: "HR", status: "Active", avatarUrl: null },
-  { id: "itv-23", name: "Victor Alvarez", role: "Staff Mobile Engineer", email: "v.alvarez@hiring360.ai", round: "Technical", status: "Active", avatarUrl: "https://placehold.co/40x40" },
-  { id: "itv-24", name: "Hannah Cole", role: "People Partner", email: "h.cole@hiring360.ai", round: "HR", status: "Active", avatarUrl: "https://placehold.co/40x40" },
+  {
+    id: "itv-01",
+    name: "David Chen",
+    role: "Senior Lead Engineer",
+    email: "d.chen@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-02",
+    name: "Sarah Jenkins",
+    role: "Talent Acquisition Partner",
+    email: "s.jenkins@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-03",
+    name: "Marcus Low",
+    role: "Staff Data Scientist",
+    email: "m.low@hiring360.ai",
+    avatarUrl: null,
+  },
+  {
+    id: "itv-04",
+    name: "Amara Okafor",
+    role: "Marketing Lead",
+    email: "a.okafor@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-05",
+    name: "Michael Chen",
+    role: "Staff Engineer",
+    email: "mi.chen@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-06",
+    name: "Priya Sharma",
+    role: "Engineering Manager",
+    email: "p.sharma@hiring360.ai",
+    avatarUrl: null,
+  },
+  {
+    id: "itv-07",
+    name: "Daniel Kim",
+    role: "People Operations Lead",
+    email: "d.kim@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-08",
+    name: "Olivia Martins",
+    role: "Principal Engineer",
+    email: "o.martins@hiring360.ai",
+    avatarUrl: null,
+  },
+  {
+    id: "itv-09",
+    name: "James Whitfield",
+    role: "Recruiting Manager",
+    email: "j.whitfield@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-10",
+    name: "Elena Rossi",
+    role: "Senior Backend Engineer",
+    email: "e.rossi@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-11",
+    name: "Noah Bennett",
+    role: "HR Business Partner",
+    email: "n.bennett@hiring360.ai",
+    avatarUrl: null,
+  },
+  {
+    id: "itv-12",
+    name: "Grace Liu",
+    role: "Staff Frontend Engineer",
+    email: "g.liu@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-13",
+    name: "Ahmed Hassan",
+    role: "Engineering Director",
+    email: "a.hassan@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-14",
+    name: "Rahul Verma",
+    role: "Staff Systems Engineer",
+    email: "r.verma@hiring360.ai",
+    avatarUrl: null,
+  },
+  {
+    id: "itv-15",
+    name: "Tom Becker",
+    role: "DevOps Lead",
+    email: "t.becker@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-16",
+    name: "Nina Torres",
+    role: "People Experience Lead",
+    email: "n.torres@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-17",
+    name: "Ken Watanabe",
+    role: "Staff Security Engineer",
+    email: "k.watanabe@hiring360.ai",
+    avatarUrl: null,
+  },
+  {
+    id: "itv-18",
+    name: "Chloe Dubois",
+    role: "Recruiting Coordinator",
+    email: "c.dubois@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-19",
+    name: "Lucas Ferreira",
+    role: "Senior QA Engineer",
+    email: "l.ferreira@hiring360.ai",
+    avatarUrl: null,
+  },
+  {
+    id: "itv-20",
+    name: "Meera Nair",
+    role: "HR Generalist",
+    email: "m.nair@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-21",
+    name: "Ryan O'Connor",
+    role: "Platform Engineer",
+    email: "r.oconnor@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-22",
+    name: "Sofia Petrova",
+    role: "Talent Acquisition Lead",
+    email: "s.petrova@hiring360.ai",
+    avatarUrl: null,
+  },
+  {
+    id: "itv-23",
+    name: "Victor Alvarez",
+    role: "Staff Mobile Engineer",
+    email: "v.alvarez@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
+  {
+    id: "itv-24",
+    name: "Hannah Cole",
+    role: "People Partner",
+    email: "h.cole@hiring360.ai",
+    avatarUrl: "https://placehold.co/40x40",
+  },
 ];
-

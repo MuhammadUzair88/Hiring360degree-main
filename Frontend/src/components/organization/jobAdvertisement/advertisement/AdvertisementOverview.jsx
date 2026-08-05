@@ -7,6 +7,7 @@ import AdvertisementGrid from "./AdvertisementGrid";
 // pages stay visually and structurally consistent.
 import { StatMetricsOverview } from "../../dashboard";
 import { advertisementPageHeader, advertisementFilters, jobAdvertisements } from "./data";
+import AdvertisementStatMetricsOverview from "./AdvertisementStatCards";
 
 export default function AdvertisementOverview() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -30,7 +31,7 @@ export default function AdvertisementOverview() {
     <div className="w-full flex flex-col gap-6">
       <AdvertisementPageHeader />
 
-      <StatMetricsOverview />
+      <AdvertisementStatMetricsOverview />
       
 
       <AdvertisementFilterBar

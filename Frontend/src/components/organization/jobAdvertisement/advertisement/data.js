@@ -1,4 +1,15 @@
 /** Breadcrumb, title, subtitle and "Post New Job" CTA at the top of the page. */
+import {
+  Briefcase,
+  Users,
+  CalendarCheck,
+  FileText,
+  Clock,
+  PlusCircle,
+  UserPlus,
+  Share2,
+} from "lucide-react";
+
 
 // Organization info — comes from backend, shared across all pages
 export const organizationData = {
@@ -13,6 +24,49 @@ export const advertisementPageHeader = {
   ctaLabel: "Post New Job",
   ctaTo: "/advertisement/add",
 };
+
+export const advertisementStats = [
+  {
+    id: "total-ads",
+    label: "total ads",
+    value: "12",
+    icon: Briefcase,
+    badgeClass: "bg-primary-50 text-primary-800",
+    trend: { direction: "up", label: "+3 this week", toneClass: "text-primary-800" },
+  },
+  {
+    id: "total-candidates",
+    label: "Total Candidates",
+    value: "1,284",
+    icon: Users,
+    badgeClass: "bg-secondary-200 text-primary-700",
+    helperText: "Across all pipelines",
+  },
+ {
+    id: "published-live",
+    label: "published Live",
+    value: "06",
+    icon: CalendarCheck,
+    badgeClass: "bg-primary-100 text-primary-600",
+    helperText: "Happening today",
+},
+  {
+    id: "draft-offers",
+    label: "Draft Hires",
+    value: "12",
+    icon: FileText,
+    badgeClass: "bg-primary-100 text-primary-900",
+    trend: { direction: "alert", label: "02 remaining", toneClass: "text-primary-900" },
+  },
+  {
+    id: "avg-hire-score",
+    label: "avg hire score",
+    value: "18",
+    icon: Clock,
+    badgeClass: "bg-secondary-200 text-primary-800",
+    trend: { direction: "down", label: "Hire Maths Score ", toneClass: "text-primary-700" },
+  },
+];
 
 /**
  * Options rendered in the department / type filter selects.
