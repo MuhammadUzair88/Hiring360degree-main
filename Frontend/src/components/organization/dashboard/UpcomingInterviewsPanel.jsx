@@ -1,30 +1,21 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import InterviewScheduleItem from "./InterviewScheduleItem";
-import { upcomingInterviews } from "./data";
+import UpcomingScheduleItem from "./UpcomingScheduleItem";
 
-/** Card listing today/upcoming interviews, with a "View All" link. */
-export default function UpcomingInterviewsPanel({
-  interviews = upcomingInterviews,
-  viewAllTo = "/interviewer",
-}) {
+/** Compact list of upcoming interviews for the day selected on ScheduleCalendar. */
+export default function UpcomingInterviewsPanel({ interviews = [] }) {
   return (
-    <div className="self-stretch p-6 bg-secondary-50/80 rounded-xl outline outline-1 outline-offset-[-1px] outline-secondary-300 backdrop-blur-sm flex flex-col gap-6">
-      <div className="self-stretch flex justify-between items-center">
-        <h2 className="text-slate-900 text-xl font-semibold leading-7">Upcoming Interviews</h2>
-        <Link
-          to={viewAllTo}
-          className="text-primary-800 text-xs font-bold leading-4 tracking-tight hover:underline"
-        >
-          View All
-        </Link>
-      </div>
+    <div className="p-5 bg-secondary-50/80 rounded-xl outline outline-1 outline-offset-[-1px] outline-secondary-300 backdrop-blur-sm flex flex-col gap-1">
+      <span className="text-[11px] font-bold uppercase tracking-wide text-zinc-600">Upcoming</span>
 
-      <div className="self-stretch flex flex-col gap-3">
-        {interviews.map((interview) => (
-          <InterviewScheduleItem key={interview.id} {...interview} />
-        ))}
-      </div>
+      {interviews.length > 0 ? (
+        <div className="flex flex-col divide-y divide-secondary-300/60">
+          {interviews.map((item) => (
+            <UpcomingScheduleItem key={item.id} {...item} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-zinc-600 text-xs py-1">No upcoming interviews.</p>
+      )}
     </div>
   );
 }

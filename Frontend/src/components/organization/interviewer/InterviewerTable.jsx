@@ -147,12 +147,12 @@ export default function InterviewerTable({
           <span role="columnheader" className="text-neutral-600 text-xs font-semibold uppercase leading-4 tracking-wider">
             Corporate Email
           </span>
-          <span role="columnheader" className="text-neutral-600 text-xs font-semibold uppercase leading-4 tracking-wider">
+          {/* <span role="columnheader" className="text-neutral-600 text-xs font-semibold uppercase leading-4 tracking-wider">
             Evaluation Round
-          </span>
-          <span role="columnheader" className="text-neutral-600 text-xs font-semibold uppercase leading-4 tracking-wider">
+          </span> */}
+          {/* <span role="columnheader" className="text-neutral-600 text-xs font-semibold uppercase leading-4 tracking-wider">
             Status
-          </span>
+          </span> */}
           <span role="columnheader" className="text-neutral-600 text-xs font-semibold uppercase leading-4 tracking-wider text-right">
             Actions
           </span>

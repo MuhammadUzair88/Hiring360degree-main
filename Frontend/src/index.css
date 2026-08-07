@@ -224,11 +224,64 @@ body {
     @apply sm:block;
   }
 
-  /* Nav labels + user footer text: visible by default, hidden once
-     collapsed at sm+ (tablet and desktop alike). */
+  /* Nav labels, user footer text, and the org card's text block: visible by
+     default, hidden once collapsed at sm+ (tablet and desktop alike). The
+     org card's logo/initials chip stays visible so there's still something
+     to look at in the icon rail. */
   .app-sidebar-main.is-collapsed .nav-label,
-  .app-sidebar-main.is-collapsed .user-footer-text {
+  .app-sidebar-main.is-collapsed .user-footer-text,
+  .app-sidebar-main.is-collapsed .org-card-text {
     @apply sm:hidden;
+  }
+
+  /*
+    Collapse-aware row padding for MainSidebar.
+    Every horizontal band inside the rail (brand row, org card wrapper,
+    nav list, sign-out) uses .app-sidebar-section for its left/right
+    padding instead of a hardcoded px-4. At full width that's the normal
+    16px gutter; once collapsed at sm+, it tightens to 12px so a 72px
+    (w-18) rail still has room left for its content instead of forcing
+    a horizontal squeeze.
+  */
+  .app-sidebar-main .app-sidebar-section {
+    @apply px-4;
+  }
+  .app-sidebar-main.is-collapsed .app-sidebar-section {
+    @apply sm:px-3;
+  }
+
+  /*
+    Individual interactive rows (nav links, sign-out button) keep their
+    own left/right padding at full width — needed so the active-state
+    left border and hover background read as a proper button, not just
+    an icon floating in the row. Once collapsed, that inner padding drops
+    to 0 and the row centers itself, so the icon lands in the middle of
+    the tightened .app-sidebar-section gutter above instead of hugging
+    the left edge (which is what made things look squeezed/misaligned
+    on tablet before).
+  */
+  .app-sidebar-main .app-sidebar-row {
+    @apply px-4 py-3 justify-start;
+  }
+  .app-sidebar-main.is-collapsed .app-sidebar-row {
+    @apply sm:px-0 sm:justify-center;
+  }
+
+  /* Brand row: logo sits left-aligned by default; once collapsed, center
+     the icon mark in the rail instead of leaving it pinned to the left. */
+  .app-sidebar-main.is-collapsed .app-sidebar-brand-row {
+    @apply sm:justify-center;
+  }
+
+  /* Organization card: full-width bar with name + industry by default.
+     Once collapsed, it shrinks to fit just the logo/initials chip and
+     centers itself in the rail, instead of staying w-full and getting
+     squeezed into a narrow, oddly-proportioned strip. */
+  .app-sidebar-main .app-org-card {
+    @apply w-full;
+  }
+  .app-sidebar-main.is-collapsed .app-org-card {
+    @apply sm:w-auto sm:mx-auto sm:px-0 sm:justify-center;
   }
 
   /* Circular collapse/expand toggle — shared visual style, hidden by
@@ -348,4 +401,14 @@ body {
   .app-candidate-column-drop.is-drag-over {
     @apply outline outline-2 outline-dashed outline-primary-800/40 bg-primary-800/5;
   }
+}
+
+/* Edge tab that OPENS InterviewerSidebar's drawer below 600px — same
+   pattern as .app-sidebar-open-tab, but at the sm breakpoint since
+   InterviewerSidebar (unlike SecondarySidebar) collapses like MainSidebar. */
+.app-interviewer-open-tab {
+  @apply sm:hidden fixed top-1/2 left-0 -translate-y-1/2 z-40 w-6 h-10 flex items-center justify-center
+         rounded-r-lg border border-l-0 border-secondary-300 bg-secondary-50 text-gray-600 shadow-sm
+         hover:bg-secondary-200 hover:text-primary-800 transition-colors
+         focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2;
 }
