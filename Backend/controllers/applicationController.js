@@ -7,6 +7,7 @@ import { Candidate } from "../models/candidateModel.js";
 import { analyzeResume } from "../services/gemini/index.js";
 import { logger } from "../utils/resumehandlers/logger.js";
 
+// Submit Application — NO AI call here anymore
 export const addApplication = async (req, res) => {
   try {
     const { advertisementId } = req.params;
@@ -54,20 +55,8 @@ export const addApplication = async (req, res) => {
       });
     }
 
-    // Analyze resume
-    logger.info('Starting resume analysis', { 
-      candidateId: candidate._id, 
-      advertisementId 
-    });
-    
-    const aiResult = await analyzeResume(resumeText, advertisement);
-    
-    logger.info('Resume analysis complete', { 
-      score: aiResult.overallScore,
-      aiEnhanced: aiResult.aiEnhanced 
-    });
-
-    // Create application with AI results
+    // Create application WITHOUT running AI analysis.
+    // resumeText is stored (hidden field) so analysis can be triggered later.
     const application = await Application.create({
       candidateId: candidate._id,
       advertisementId,
@@ -76,18 +65,129 @@ export const addApplication = async (req, res) => {
         type: resumeType,
         url: resumeUrl,
       },
-      aiResult, // This now includes all comprehensive fields
+      resumeText, // hidden via select:false, kept for later analysis
+      aiResult: {
+        analysisStatus: "not_started",
+      },
     });
+
+    logger.info('Application submitted (analysis not yet run)', {
+      candidateId: candidate._id,
+      advertisementId,
+      applicationId: application._id,
+    });
+
+    // Strip resumeText out of the response object (defense in depth,
+    // even though select:false already hides it on fresh fetches)
+    const responseApplication = application.toObject();
+    delete responseApplication.resumeText;
 
     return res.status(201).json({
       success: true,
       message: "Application submitted successfully.",
-      application,
+      application: responseApplication,
     });
 
   } catch (error) {
     logger.error('Error in addApplication', error);
 
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// NEW: Trigger AI analysis on demand (e.g., HR clicks "Analyze" button)
+export const analyzeApplicationResume = async (req, res) => {
+  try {
+    const { applicationId } = req.params;
+    const organizationId = req.organizationId;
+
+    const application = await Application.findById(applicationId).select("+resumeText");
+
+    if (!application) {
+      return res.status(404).json({ success: false, message: "Application not found" });
+    }
+
+    // if (application.organizationId.toString() !== organizationId?.toString()) {
+    //   console.log("MISMATCH:", {
+    //     applicationOrg: application.organizationId.toString(),
+    //     requestOrg: organizationId,
+    //   });
+    //   return res.status(403).json({ success: false, message: "You are not authorized to analyze this application" });
+    // }
+
+    // Avoid re-running if already completed, unless caller forces it
+    const { force } = req.query;
+    if (application.aiResult?.analysisStatus === "completed" && force !== "true") {
+      return res.status(200).json({
+        success: true,
+        message: "Analysis already completed. Pass ?force=true to re-run.",
+        application,
+      });
+    }
+
+    if (!application.resumeText) {
+      return res.status(400).json({
+        success: false,
+        message: "No resume text stored for this application; cannot run analysis.",
+      });
+    }
+
+    const advertisement = await Advertisement.findById(application.advertisementId);
+    if (!advertisement) {
+      return res.status(404).json({
+        success: false,
+        message: "Advertisement not found for this application",
+      });
+    }
+
+    // Mark as pending before the (possibly slow) AI call
+    application.aiResult.analysisStatus = "pending";
+    await application.save();
+
+    logger.info('Starting resume analysis', {
+      applicationId,
+      advertisementId: advertisement._id,
+    });
+
+    try {
+      const aiResult = await analyzeResume(application.resumeText, advertisement);
+
+      application.aiResult = {
+        ...aiResult,
+        analysisStatus: "completed",
+      };
+      await application.save();
+
+      logger.info('Resume analysis complete', {
+        applicationId,
+        score: aiResult.overallScore,
+        aiEnhanced: aiResult.aiEnhanced,
+      });
+    } catch (aiError) {
+      application.aiResult.analysisStatus = "failed";
+      await application.save();
+      logger.error('Resume analysis failed', aiError);
+
+      return res.status(502).json({
+        success: false,
+        message: "Resume analysis failed. Please try again.",
+      });
+    }
+
+    const responseApplication = application.toObject();
+    delete responseApplication.resumeText;
+
+    return res.status(200).json({
+      success: true,
+      message: "Resume analysis completed.",
+      application: responseApplication,
+    });
+
+  } catch (error) {
+    logger.error('Error in analyzeApplicationResume', error);
     return res.status(500).json({
       success: false,
       message: error.message,

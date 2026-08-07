@@ -33,6 +33,15 @@ const applicationSchema = new mongoose.Schema(
       },
     },
 
+    // NEW: raw resume text, kept hidden by default so it never leaks
+    // out through normal find/populate calls. Needed later so the
+    // "Analyze" endpoint can run AI analysis without re-asking the
+    // candidate for their resume.
+    resumeText: {
+      type: String,
+      select: false, // never returned unless explicitly requested with +resumeText
+    },
+
     // AI RESULT - Matches geminiService.js output
     aiResult: {
       // Core Scores
@@ -122,6 +131,14 @@ const applicationSchema = new mongoose.Schema(
         enum: ['comprehensive', 'deterministic', 'failed'],
         default: 'deterministic',
       },
+
+      // NEW: tracks whether/where analysis is in its lifecycle,
+      // independent of the application's own status (Applied/Shortlisted/etc.)
+      analysisStatus: {
+        type: String,
+        enum: ['not_started', 'pending', 'completed', 'failed'],
+        default: 'not_started',
+      },
     },
 
     // Application Status
@@ -144,83 +161,83 @@ const applicationSchema = new mongoose.Schema(
       default: 0,
     },
 
-roundResults: [
-  {
-    roundName: {
-      type: String,
-      required: true,
-    },
+    roundResults: [
+      {
+        roundName: {
+          type: String,
+          required: true,
+        },
 
-    interviewerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Interviewer",
-      required: true,
-    },
+        interviewerId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Interviewer",
+          required: true,
+        },
 
-    status: {
-      type: String,
-      enum: ["Pending", "Passed", "Failed"],
-      default: "Pending",
-    },
+        status: {
+          type: String,
+          enum: ["Pending", "Passed", "Failed"],
+          default: "Pending",
+        },
 
-    evaluation: {
-      technicalSkills: {
-        type: Number,
-        min: 1,
-        max: 5,
+        evaluation: {
+          technicalSkills: {
+            type: Number,
+            min: 1,
+            max: 5,
+          },
+
+          problemSolving: {
+            type: Number,
+            min: 1,
+            max: 5,
+          },
+
+          communication: {
+            type: Number,
+            min: 1,
+            max: 5,
+          },
+
+          behavioralSkills: {
+            type: Number,
+            min: 1,
+            max: 5,
+          },
+
+          culturalFit: {
+            type: Number,
+            min: 1,
+            max: 5,
+          },
+        },
+
+        coreStrengths: {
+          type: String,
+          trim: true,
+        },
+
+        areasForImprovement: {
+          type: String,
+          trim: true,
+        },
+
+        recommendation: {
+          type: String,
+          enum: [
+            "Strong Hire",
+            "Hire",
+            "Hold",
+            "No Hire",
+          ],
+        },
+
+        finalComments: {
+          type: String,
+          trim: true,
+        },
       },
-
-      problemSolving: {
-        type: Number,
-        min: 1,
-        max: 5,
-      },
-
-      communication: {
-        type: Number,
-        min: 1,
-        max: 5,
-      },
-
-      behavioralSkills: {
-        type: Number,
-        min: 1,
-        max: 5,
-      },
-
-      culturalFit: {
-        type: Number,
-        min: 1,
-        max: 5,
-      },
-    },
-
-    coreStrengths: {
-      type: String,
-      trim: true,
-    },
-
-    areasForImprovement: {
-      type: String,
-      trim: true,
-    },
-
-    recommendation: {
-      type: String,
-      enum: [
-        "Strong Hire",
-        "Hire",
-        "Hold",
-        "No Hire",
-      ],
-    },
-
-    finalComments: {
-      type: String,
-      trim: true,
-    },
-  },
-],
+    ],
 
     offerLetterUrl: { type: String },
   },

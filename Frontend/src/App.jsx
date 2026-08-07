@@ -13,6 +13,7 @@ import CandidateIntake from "./pages/jobAdvertisement/candidateIntake/CandidateI
 import OfferLetter from "./pages/jobAdvertisement/offerLetter/OfferLetter";
 import Rounds from "./pages/jobAdvertisement/rounds/Rounds";
 import EditOfferLetter from "./pages/jobAdvertisement/offerLetter/EditOfferLetter";
+import CandidateForm from "./components/organization/candidateForm/CandidateForm";
 
 function App() {
   return (
@@ -23,19 +24,24 @@ function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/advertisement" element={<Advertisement />} />
         <Route path="/advertisement/add" element={<CreateAdvertisement />} />
-        
       </Route>
 
       <Route element={<SecondaryLayout />}>
         <Route path="/advertisement/job/:id" element={<JobOverviewPage />} />
         <Route path="/advertisement/edit/:id" element={<EditAdvertisement />} />
-        <Route path="/advertisement/job/:id/candidate-intake" element={<CandidateIntake />} />
-        <Route path="/advertisement/job/:id/rounds" element={<Rounds />} />
-        <Route path="/advertisement/job/:id/offer-letter" element={<OfferLetter />} />
         <Route
-  path="/advertisement/job/:jobId/offer-letter/:applicationId/edit"
-  element={<EditOfferLetter />}
-/>
+          path="/advertisement/job/:id/candidate-intake"
+          element={<CandidateIntake />}
+        />
+        <Route path="/advertisement/job/:id/rounds" element={<Rounds />} />
+        <Route
+          path="/advertisement/job/:id/offer-letter"
+          element={<OfferLetter />}
+        />
+        <Route
+          path="/advertisement/job/:jobId/offer-letter/:applicationId/edit"
+          element={<EditOfferLetter />}
+        />
       </Route>
     </Routes>
   );
