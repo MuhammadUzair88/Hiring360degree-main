@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 import ChartTooltip from "./ChartTooltip";
-import { applicationsTrendData, applicationsTrendFilters } from "./data";
+
 
 /** Area chart of applications received over time, with a period tab switcher. */
 export default function ApplicationsTrendChart({
-  data = applicationsTrendData,
-  filters = applicationsTrendFilters,
+  data = {},
+  filters = ["Daily", "Weekly", "Monthly"],
   title = "Applications Trend",
   subtitle = "New applications received over time",
 }) {

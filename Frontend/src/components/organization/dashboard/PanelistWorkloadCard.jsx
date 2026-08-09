@@ -7,11 +7,7 @@ import {
   Tooltip,
 } from "recharts";
 
-const workloadData = [
-  { name: "Available", value: 8 },
-  { name: "Busy", value: 5 },
-  { name: "On Leave", value: 2 },
-];
+
 
 const COLORS = [
   "#6D28D9",
@@ -28,14 +24,15 @@ function WorkloadTooltip({ active, payload }) {
         {payload[0].name}
       </p>
       <p className="text-xs text-slate-600">
-        {payload[0].value} Panelists
+        {payload[0].value} Interviews
       </p>
     </div>
   );
 }
 
-export default function PanelistWorkloadCard() {
-  const total = workloadData.reduce((sum, item) => sum + item.value, 0);
+export default function PanelistWorkloadCard({ workload = [] }) {
+  const workloadData = workload;
+  const total = workloadData.reduce((sum, item) => sum + Number(item.value || 0), 0);
 
   return (
     <div className="flex-1 p-6 bg-secondary-50/80 rounded-xl outline outline-1 outline-offset-[-1px] outline-secondary-300 backdrop-blur-sm">
@@ -68,7 +65,7 @@ export default function PanelistWorkloadCard() {
               >
                 {workloadData.map((entry, index) => (
                   <Cell
-                    key={index}
+                    key={entry.id || entry.name || index}
                     fill={COLORS[index]}
                   />
                 ))}

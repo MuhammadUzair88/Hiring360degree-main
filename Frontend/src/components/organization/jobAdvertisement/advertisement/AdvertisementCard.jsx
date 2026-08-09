@@ -22,7 +22,7 @@ export default function AdvertisementCard({
   const visibleTags = tags.slice(0, MAX_VISIBLE_TAGS);
   const remainingTagsCount = Math.max(tags.length - MAX_VISIBLE_TAGS, 0);
   const formattedSalary = typeof salary === "number" ? salary.toLocaleString() : salary;
-
+  console.log(applicantsCount)
   return (
     <Link
       to={`/advertisement/job/${id}`}

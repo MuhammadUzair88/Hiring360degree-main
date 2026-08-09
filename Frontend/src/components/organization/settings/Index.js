@@ -5,5 +5,3 @@ export { default as SettingsFormField } from "./SettingsFormField";
 export { default as SecurityCard } from "./SecurityCard";
 export { default as UnsavedChangesBar } from "./UnsavedChangesBar";
 export { default as SettingsSuccessToast } from "./SettingsSuccessToast";
-
-export * from "./data";

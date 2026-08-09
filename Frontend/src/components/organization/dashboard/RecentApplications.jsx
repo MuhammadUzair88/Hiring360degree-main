@@ -1,10 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { recentApplications } from "./data";
+
 
 /** Card with a table of the most recent candidate applications. */
 export default function RecentApplicationsTable({
-  applications = recentApplications,
+  applications = [],
   viewAllTo = "/advertisement",
 }) {
   return (
@@ -31,7 +31,7 @@ export default function RecentApplicationsTable({
           </thead>
           <tbody className="divide-y divide-secondary-300/60">
             {applications.map((app) => (
-              <tr key={app.id} className="hover:bg-secondary-200/40 transition-colors">
+              <tr key={app.id || `${app.email || app.candidateName}-${app.appliedOn}`} className="hover:bg-secondary-200/40 transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="w-8 h-8 shrink-0 rounded-full bg-primary-100 text-primary-800 text-[11px] font-bold flex items-center justify-center uppercase">

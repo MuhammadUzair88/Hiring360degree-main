@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { organizationData, advertisementPageHeader } from "./data";
+import { advertisementPageHeader } from "./data";
 
 /**
  * Page title + subtitle + "Post New Job" CTA.
@@ -12,7 +12,7 @@ import { organizationData, advertisementPageHeader } from "./data";
  * body-copy (`text-base leading-6`) tokens.
  */
 export default function AdvertisementPageHeader({
-  organization = organizationData,
+  organization,
   title = advertisementPageHeader.title,
   subtitle = advertisementPageHeader.subtitle,
   ctaLabel = advertisementPageHeader.ctaLabel,

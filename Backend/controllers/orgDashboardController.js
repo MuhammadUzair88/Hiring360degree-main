@@ -82,8 +82,16 @@ const getKPIData = async (organizationId) => {
     Advertisement.countDocuments({ organizationId, status: "Live", createdAt: { $lte: thirtyDaysAgo } }),
     Application.countDocuments({ organizationId, createdAt: { $gte: thirtyDaysAgo } }),
     Application.countDocuments({ organizationId, createdAt: { $gte: previousThirtyDays, $lt: thirtyDaysAgo } }),
-    ScheduledInterview.countDocuments({ status: { $in: ["Scheduled", "Ongoing"] } }),
-    ScheduledInterview.countDocuments({ status: { $in: ["Scheduled", "Ongoing"] }, createdAt: { $lt: thirtyDaysAgo } }),
+    // ScheduledInterview.countDocuments({ status: { $in: ["Scheduled", "Ongoing"] } }),
+    // ScheduledInterview.countDocuments({ status: { $in: ["Scheduled", "Ongoing"] }, createdAt: { $lt: thirtyDaysAgo } }),
+    ScheduledInterview.countDocuments({
+  status: "Ongoing"
+}),
+
+ScheduledInterview.countDocuments({
+  status: "Ongoing",
+  createdAt: { $lt: thirtyDaysAgo }
+}),
     Application.countDocuments({ 
       organizationId, 
       status: { $in: ["Hired", "Offered"] }, // Count both Hired and Offered
@@ -277,7 +285,7 @@ const getPerformanceWeekly = async (organizationId) => {
       })
     ]);
 
-    console.log(`Week ${4-i} data:`, { applications, interviews, hires }); // Debug
+    
 
     result.push({
       name: `Wk ${4 - i}`,

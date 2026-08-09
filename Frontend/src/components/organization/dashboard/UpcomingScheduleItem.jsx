@@ -1,9 +1,10 @@
 import React from "react";
 
 /** One compact row inside the sidebar's UpcomingInterviewsPanel. */
-export default function UpcomingScheduleItem({ candidateName, roleLabel, time }) {
-  const initials = candidateName
-    .split(" ")
+export default function UpcomingScheduleItem({ candidateName = "Unknown candidate", roleLabel = "Interview", time = "—" }) {
+  const safeName = String(candidateName || "Unknown candidate");
+  const initials = safeName
+    .split(/\s+/)
     .map((part) => part[0])
     .join("")
     .slice(0, 2)
@@ -15,7 +16,7 @@ export default function UpcomingScheduleItem({ candidateName, roleLabel, time })
         {initials}
       </span>
       <div className="flex-1 min-w-0">
-        <h5 className="text-slate-900 text-xs font-semibold truncate">{candidateName}</h5>
+        <h5 className="text-slate-900 text-xs font-semibold truncate">{safeName}</h5>
         <span className="text-zinc-600 text-[11px] truncate block">{roleLabel}</span>
       </div>
       <span className="text-zinc-600 text-[10px] font-mono font-bold shrink-0">{time}</span>

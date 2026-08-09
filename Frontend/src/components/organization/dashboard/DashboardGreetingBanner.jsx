@@ -1,5 +1,4 @@
 import React from "react";
-import { dashboardGreeting } from "./data";
 
 /**
  * Page-level greeting shown at the top of the Dashboard Overview.
@@ -10,8 +9,8 @@ import { dashboardGreeting } from "./data";
  * AdvertisementPageHeader so every page header in the app matches.
  */
 export default function DashboardGreetingBanner({
-  orgName = dashboardGreeting.orgName,
-  subtitle = dashboardGreeting.subtitle,
+  orgName = "Organization",
+  subtitle = "Here is your talent acquisition overview for today.",
 }) {
   return (
     <div className="self-stretch flex flex-col justify-start items-start gap-1">

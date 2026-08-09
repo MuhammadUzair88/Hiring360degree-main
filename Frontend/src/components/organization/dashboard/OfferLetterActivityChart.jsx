@@ -1,7 +1,7 @@
 import React from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import ChartTooltip from "./ChartTooltip";
-import { offerLetterActivity } from "./data";
+
 
 /** Darkest-first primary ramp, same approach as JobCategoryDistributionChart. */
 const SLICE_COLORS = [
@@ -13,7 +13,7 @@ const SLICE_COLORS = [
 
 /** Donut of offer letters by status (sent / accepted / pending / declined). */
 export default function OfferLetterActivityChart({
-  activity = offerLetterActivity,
+  activity = [],
   title = "Offer Letters",
   subtitle = "Status of offers sent this month",
 }) {
@@ -42,7 +42,7 @@ export default function OfferLetterActivityChart({
                 paddingAngle={3}
               >
                 {activity.map((entry, index) => (
-                  <Cell key={entry.id} fill={SLICE_COLORS[index % SLICE_COLORS.length]} />
+                  <Cell key={entry.id || `${entry.name}-${index}`} fill={SLICE_COLORS[index % SLICE_COLORS.length]} />
                 ))}
               </Pie>
             </PieChart>
@@ -54,7 +54,7 @@ export default function OfferLetterActivityChart({
 
         <div className="flex-1 space-y-1.5">
           {activity.map((item, index) => (
-            <div key={item.id} className="flex items-center justify-between gap-2">
+            <div key={item.id || `${item.name}-${index}`} className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5 min-w-0">
                 <span
                   className="w-2 h-2 rounded-full shrink-0"

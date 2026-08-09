@@ -1,4 +1,5 @@
 import { Advertisement } from "../models/advertisementModel.js";
+import { Application } from "../models/applicationModel.js";
 import { AIPamphlet } from "../models/aiPumphletModel.js";
 import { savePamphlet } from "../services/pamphletService.js";
 
@@ -222,15 +223,46 @@ export const getOrganizationAdvertisements = async (req, res) => {
 
     const advertisements = await Advertisement.find({
       organizationId,
-    }).sort({ createdAt: -1 });
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const advertisementIds = advertisements.map((ad) => ad._id);
+
+    const applicationCounts = await Application.aggregate([
+      {
+        $match: {
+          organizationId,
+          advertisementId: { $in: advertisementIds },
+        },
+      },
+      {
+        $group: {
+          _id: "$advertisementId",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const countMap = new Map(
+      applicationCounts.map((item) => [
+        item._id.toString(),
+        item.count,
+      ])
+    );
+
+    const advertisementsWithCounts = advertisements.map((ad) => ({
+      ...ad,
+      applicantsCount: countMap.get(ad._id.toString()) || 0,
+    }));
 
     return res.status(200).json({
       success: true,
-      count: advertisements.length,
-      advertisements,
+      count: advertisementsWithCounts.length,
+      advertisements: advertisementsWithCounts,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Get advertisements error:", error);
 
     return res.status(500).json({
       success: false,

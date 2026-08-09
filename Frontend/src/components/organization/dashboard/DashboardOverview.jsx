@@ -15,7 +15,16 @@ import OfferLetterActivityChart from "./OfferLetterActivityChart";
 import { useAuth } from "../../../context/AuthContext";
 import { useAsync } from "../../../hooks/useAsync";
 import orgDashboardService from "../../../services/orgDashboardService";
-import { mapKpiCardsToStats, mapAgendaItems } from "../../../utils/adapters";
+import {
+  mapKpiCardsToStats,
+  mapApplicationsTrend,
+  mapPerformanceData,
+  mapJobDistribution,
+  mapRecentApplications,
+  mapOfferLetterActivity,
+  mapDaySchedule,
+  mapInterviewerMetricsToWorkload,
+} from "../../../utils/adapters";
 
 const EMPTY_DAY = { agenda: [], live: null, upcoming: [] };
 
@@ -34,14 +43,23 @@ export default function DashboardOverview() {
   const [daySchedule, setDaySchedule] = useState(EMPTY_DAY);
   const [isDayLoading, setIsDayLoading] = useState(true);
 
-  const { data, isLoading, error } = useAsync(() => orgDashboardService.getDashboardData(), []);
-  const dashboard = data?.data;
+  const { data, isLoading, error, refetch } = useAsync(
+    () => orgDashboardService.getDashboardData(),
+    []
+  );
+  const {
+    data: interviewerMetricsResponse,
+    refetch: refetchInterviewerMetrics,
+  } = useAsync(() => orgDashboardService.getInterviewerMetrics(), []);
+
+  const dashboard = data?.data || {};
+  const interviewerMetrics = interviewerMetricsResponse?.data || [];
 
   const loadDaySchedule = useCallback(async (date) => {
     setIsDayLoading(true);
     try {
       const result = await orgDashboardService.getScheduleByDate(toIsoDate(date));
-      setDaySchedule(result.data || EMPTY_DAY);
+      setDaySchedule(mapDaySchedule(result.data || EMPTY_DAY));
     } catch (error) {
       setDaySchedule(EMPTY_DAY);
     } finally {
@@ -52,6 +70,17 @@ export default function DashboardOverview() {
   useEffect(() => {
     loadDaySchedule(selectedDate);
   }, [selectedDate, loadDaySchedule]);
+
+  // Keep operational dashboard data fresh without changing the UI.
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      refetch().catch(() => {});
+      refetchInterviewerMetrics().catch(() => {});
+      loadDaySchedule(selectedDate);
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [refetch, refetchInterviewerMetrics, loadDaySchedule, selectedDate]);
 
   if (isLoading) {
     return (
@@ -84,22 +113,22 @@ export default function DashboardOverview() {
       {/* Applications Trend + Job Category Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
         <div className="lg:col-span-3">
-          <ApplicationsTrendChart data={dashboard?.applicationsTrend} />
+          <ApplicationsTrendChart data={mapApplicationsTrend(dashboard.applicationsTrend)} />
         </div>
         <div className="lg:col-span-2">
-          <JobCategoryDistributionChart categories={dashboard?.jobDistribution} />
+          <JobCategoryDistributionChart categories={mapJobDistribution(dashboard.jobDistribution)} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
         {/* ── Main column (75%) ── */}
         <div className="xl:col-span-3 flex flex-col gap-6">
-          <HiringPerformanceChart data={dashboard?.performanceData} />
+          <HiringPerformanceChart data={mapPerformanceData(dashboard.performanceData)} />
 
-          <RecentApplications applications={dashboard?.recentApplications} />
+          <RecentApplications applications={mapRecentApplications(dashboard.recentApplications)} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <PanelistWorkloadCard />
+            <PanelistWorkloadCard workload={mapInterviewerMetricsToWorkload(interviewerMetrics)} />
             <QuickActionsPanel />
           </div>
         </div>
@@ -118,14 +147,14 @@ export default function DashboardOverview() {
             day={selectedDate.getDate()}
             year={selectedDate.getFullYear()}
             monthIndex={selectedDate.getMonth()}
-            agenda={isDayLoading ? [] : mapAgendaItems(daySchedule.agenda)}
+            agenda={isDayLoading ? [] : daySchedule.agenda}
           />
 
           <OngoingInterviewsPanel live={daySchedule.live} />
 
           <UpcomingInterviewsPanel interviews={daySchedule.upcoming} />
 
-          <OfferLetterActivityChart activity={dashboard?.offerLetterStats} />
+          <OfferLetterActivityChart activity={mapOfferLetterActivity(dashboard.offerLetterStats)} />
         </div>
       </div>
     </div>

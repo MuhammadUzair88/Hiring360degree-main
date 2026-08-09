@@ -158,3 +158,118 @@ export function mapAdvertisementToJobOverview(ad, pamphlet, organizationName) {
     generatedImageUrl: pamphlet?.generatedImageUrl || null,
   };
 }
+
+
+/** Normalize API trend data for Recharts (backend may use Applications with capital A). */
+export function mapApplicationsTrend(data = {}) {
+  return Object.fromEntries(
+    Object.entries(data || {}).map(([period, rows]) => [
+      period,
+      (rows || []).map((row) => ({
+        name: row.name,
+        applications: Number(row.applications ?? row.Applications ?? 0),
+      })),
+    ])
+  );
+}
+
+/** Normalize hiring-performance series for the existing chart contract. */
+export function mapPerformanceData(data = {}) {
+  return Object.fromEntries(
+    Object.entries(data || {}).map(([period, rows]) => [
+      period,
+      (rows || []).map((row) => ({
+        name: row.name,
+        applications: Number(row.applications ?? row.Applications ?? 0),
+        interviews: Number(row.interviews ?? row.Interviews ?? 0),
+        hires: Number(row.hires ?? row.Hires ?? 0),
+      })),
+    ])
+  );
+}
+
+/** Normalize job-distribution API rows and provide stable React keys. */
+export function mapJobDistribution(categories = []) {
+  return (categories || []).map((item, index) => ({
+    id: item.id || item._id || `${String(item.name || 'category').toLowerCase().replace(/\s+/g, '-')}-${index}`,
+    name: item.name || 'Other',
+    value: Number(item.value || 0),
+    description: item.description || item.label || '',
+  }));
+}
+
+/** Normalize recent-applications API rows for the existing table. */
+export function mapRecentApplications(applications = []) {
+  return (applications || []).map((app, index) => ({
+    id: app.id || app._id || `recent-${index}`,
+    candidateName: app.candidateName || app.name || 'Unknown candidate',
+    email: app.email || '',
+    initials: app.initials || app.initial || String(app.name || 'NA')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase(),
+    roleLabel: app.roleLabel || app.job || '—',
+    appliedOn: app.appliedOn || app.date || '—',
+    status: app.status || 'Applied',
+  }));
+}
+
+/** Normalize offer activity and provide stable keys. */
+export function mapOfferLetterActivity(activity = []) {
+  return (activity || []).map((item, index) => ({
+    id: item.id || item._id || `offer-${String(item.name || index).toLowerCase().replace(/\s+/g, '-')}`,
+    name: item.name || 'Unknown',
+    value: Number(item.value || 0),
+  }));
+}
+
+/** Normalize the selected-day schedule response for existing sidebar components. */
+export function mapDaySchedule(schedule = {}) {
+  const agenda = mapAgendaItems(schedule?.agenda || []);
+  const liveSource = schedule?.live;
+  const live = liveSource
+    ? {
+        id: liveSource.id || liveSource._id || liveSource.callId || 'live-interview',
+        callId: liveSource.callId || '',
+        meetingLink: liveSource.meetingLink || liveSource.meetingLinkInterviewer || '',
+        candidateName: liveSource.candidateName || liveSource.name || 'Unknown candidate',
+        roleLabel: liveSource.roleLabel || liveSource.role || 'Candidate',
+        stageLabel: liveSource.stageLabel || liveSource.host || 'Interview',
+        elapsed: liveSource.elapsed || liveSource.time || 'LIVE',
+      }
+    : null;
+
+  const upcoming = (schedule?.upcoming || []).map((item, index) => ({
+    id: item.id || item._id || item.callId || `upcoming-${index}`,
+    callId: item.callId || '',
+    candidateName: item.candidateName || item.name || 'Unknown candidate',
+    roleLabel: item.roleLabel || item.position || 'Interview',
+    time: item.time || '—',
+  }));
+
+  return { agenda, live, upcoming };
+}
+
+/** Reduce interviewer analytics to real workload counts for the existing donut card. */
+export function mapInterviewerMetricsToWorkload(metrics = []) {
+  return [
+    {
+      id: 'scheduled',
+      name: 'Scheduled',
+      value: (metrics || []).reduce((sum, item) => sum + Number(item.scheduledInterviews || 0), 0),
+    },
+    {
+      id: 'ongoing',
+      name: 'Ongoing',
+      value: (metrics || []).reduce((sum, item) => sum + Number(item.ongoingInterviews || 0), 0),
+    },
+    {
+      id: 'completed',
+      name: 'Completed',
+      value: (metrics || []).reduce((sum, item) => sum + Number(item.completedInterviews || 0), 0),
+    },
+  ];
+}

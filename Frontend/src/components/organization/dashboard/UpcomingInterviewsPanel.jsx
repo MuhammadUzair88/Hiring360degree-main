@@ -10,7 +10,7 @@ export default function UpcomingInterviewsPanel({ interviews = [] }) {
       {interviews.length > 0 ? (
         <div className="flex flex-col divide-y divide-secondary-300/60">
           {interviews.map((item) => (
-            <UpcomingScheduleItem key={item.id} {...item} />
+            <UpcomingScheduleItem key={item.id || item.callId || `${item.candidateName}-${item.time}`} {...item} />
           ))}
         </div>
       ) : (

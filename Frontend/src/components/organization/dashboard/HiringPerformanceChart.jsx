@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import ChartTooltip from "./ChartTooltip";
-import { hiringPerformanceData, hiringPerformanceFilters } from "./data";
+
 
 /**
  * Darkest-to-lightest primary ramp, ordered top-of-funnel to
@@ -17,8 +17,8 @@ const SERIES = [
 
 /** Line chart of applications → interviews → hires, with a period tab switcher. */
 export default function HiringPerformanceChart({
-  data = hiringPerformanceData,
-  filters = hiringPerformanceFilters,
+  data = {},
+  filters = ["Weekly", "Monthly", "Yearly"],
   title = "Hiring Performance",
   subtitle = "Applications, interviews, and hires over time",
 }) {

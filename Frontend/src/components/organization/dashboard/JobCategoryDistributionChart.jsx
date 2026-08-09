@@ -1,7 +1,7 @@
 import React from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import ChartTooltip from "./ChartTooltip";
-import { jobCategoryDistribution } from "./data";
+
 
 /**
  * Monochromatic primary-shade ramp plus one neutral, darkest-first —
@@ -19,7 +19,7 @@ const SLICE_COLORS = [
 
 /** Donut of open pipeline share by department, with a legend list. */
 export default function JobCategoryDistributionChart({
-  categories = jobCategoryDistribution,
+  categories = [],
   title = "Job Category Distribution",
   subtitle = "Share of open pipeline by department",
 }) {
@@ -48,7 +48,7 @@ export default function JobCategoryDistributionChart({
                 paddingAngle={3}
               >
                 {categories.map((entry, index) => (
-                  <Cell key={entry.id} fill={SLICE_COLORS[index % SLICE_COLORS.length]} />
+                  <Cell key={entry.id || `${entry.name}-${index}`} fill={SLICE_COLORS[index % SLICE_COLORS.length]} />
                 ))}
               </Pie>
             </PieChart>
@@ -61,7 +61,7 @@ export default function JobCategoryDistributionChart({
 
         <div className="flex-1 w-full space-y-2.5">
           {categories.map((cat, index) => (
-            <div key={cat.id} className="flex items-center justify-between gap-2">
+            <div key={cat.id || `${cat.name}-${index}`} className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 min-w-0">
                 <span
                   className="w-2.5 h-2.5 rounded-full shrink-0"
