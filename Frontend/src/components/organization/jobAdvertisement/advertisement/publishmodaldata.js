@@ -1,3 +1,11 @@
+
+import {
+  FaLinkedinIn,
+  FaFacebookF,
+  FaWhatsapp,
+  FaInstagram,
+} from "react-icons/fa";
+
 export const publishModalCopy = {
   title: "Job Published Successfully!",
   subtitle:
@@ -11,8 +19,24 @@ export const publishSummaryFields = [
 ];
 
 export const sharePlatforms = [
-  { key: "linkedin", label: "LinkedIn" },
-  { key: "facebook", label: "Facebook" },
-  { key: "whatsapp", label: "WhatsApp" },
-  { key: "instagram", label: "Instagram" },
+  {
+    key: "linkedin",
+    label: "LinkedIn",
+    icon: FaLinkedinIn,
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+    icon: FaFacebookF,
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp",
+    icon: FaWhatsapp,
+  },
+  {
+    key: "instagram",
+    label: "Instagram",
+    icon: FaInstagram,
+  },
 ];

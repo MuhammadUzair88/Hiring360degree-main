@@ -1,17 +1,4 @@
-// src/components/interviewerDashboard/conductInterview/statusTone.js
-//
-// THE source of truth for every status color in this feature — badges,
-// dots, metric card accents. Deliberately built from primary shades
-// only (light tint for a waiting state, solid fill for a live state,
-// mid tint for a finished state) instead of a red/amber/emerald/blue
-// rainbow, so the whole roster reads as one brand rather than a
-// traffic-light. "No Show" is the one deliberate exception — it's an
-// absence, not a stage of progress, so it stays neutral gray instead
-// of borrowing a primary shade that would misleadingly suggest it's
-// still "on track".
-//
-// Change a class here and every card / metric / drawer that reads
-// this file follows automatically.
+
 
 import { Clock, Video, CheckCircle2, AlertCircle, CalendarRange } from "lucide-react";
 

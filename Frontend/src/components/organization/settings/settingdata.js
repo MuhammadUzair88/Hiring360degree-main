@@ -38,44 +38,47 @@ export const organizationProfile = {
  */
 export const companyInformationFields = [
   {
-    id: "companyName",
+    id: "name",
     label: "Company Name",
-    value: "Hiring360 Enterprise",
+    value: "",
     icon: Building2,
     type: "text",
   },
   {
     id: "industry",
     label: "Industry",
-    value: "Software Development",
+    value: "",
     icon: Briefcase,
     type: "text",
   },
   {
-    id: "businessEmail",
+    id: "email",
     label: "Business Email",
-    value: "ops@hiring360.ai",
+    value: "",
     icon: Mail,
     type: "email",
+    // The backend's update-profile endpoint intentionally doesn't accept
+    // email changes (it's the login identifier) — shown for reference only.
+    disabled: true,
   },
   {
-    id: "phoneNumber",
+    id: "phone",
     label: "Phone Number",
-    value: "+1 (555) 000-0000",
+    value: "",
     icon: Phone,
     type: "tel",
   },
   {
     id: "website",
     label: "Website",
-    value: "https://hiring360.ai",
+    value: "",
     icon: Globe,
     type: "url",
   },
   {
-    id: "headquarters",
+    id: "location",
     label: "Headquarters",
-    value: "San Francisco, CA",
+    value: "",
     icon: MapPin,
     type: "text",
   },

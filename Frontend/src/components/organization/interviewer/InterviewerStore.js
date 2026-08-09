@@ -1,29 +1,45 @@
-import { initialInterviewers } from "./interviewerdata";
+import interviewerService from "../../../services/interviewerService";
+import { extractErrorMessage } from "../../../services/apiClient";
 
 /**
  * interviewerStore.js
  * ------------------------------------------------------------------
- * A minimal in-memory data layer for the Interviewer feature. There is
- * no backend wired up yet, but the list page and the add/edit form are
- * mounted as separate routes — without *some* shared state, an
- * interviewer added on the form would vanish the moment you navigated
- * back to the list. This module is that shared state: a plain array
- * plus a tiny pub-sub so any mounted component can react to changes.
+ * A thin, cached data layer over interviewerService (the real
+ * /api/interviewer/* backend). The list page and the add/edit form
+ * are mounted as separate pieces of UI — without *some* shared,
+ * cached state, an interviewer added on the form would either need
+ * its own refetch or vanish until the list reloads. This module is
+ * that shared cache: fetched once, kept in memory, updated in place
+ * after every mutation, and broadcast via a tiny pub-sub so any
+ * mounted component re-renders with the latest data.
  *
- * Swap the body of each function for a real API call (axios/fetch)
- * when the backend is ready — the exported function signatures are
- * designed to stay the same either way.
+ * The backend's `type` field is this UI's "round" concept — mapped
+ * at this boundary so every component above this file can keep
+ * calling it `round`.
  * ------------------------------------------------------------------
  */
 
-let interviewers = [...initialInterviewers];
+let interviewers = [];
+let hasLoaded = false;
 const listeners = new Set();
 
 function notify() {
   listeners.forEach((listener) => listener(interviewers));
 }
 
-/** Current snapshot of every interviewer. */
+function fromBackend(iv) {
+  return {
+    id: iv._id,
+    name: iv.name,
+    email: iv.email,
+    round: iv.type,
+    role: iv.type,
+    status: "Active",
+    avatarUrl: null,
+  };
+}
+
+/** Current cached snapshot of every interviewer (empty until loadInterviewers() resolves once). */
 export function getInterviewers() {
   return interviewers;
 }
@@ -34,37 +50,55 @@ export function subscribe(listener) {
   return () => listeners.delete(listener);
 }
 
-/** Look up a single interviewer by id (used to prefill the edit form). */
+/** Look up a single interviewer by id from the cache (used to prefill the edit form). */
 export function findInterviewer(id) {
   return interviewers.find((item) => item.id === id) ?? null;
 }
 
-/** Create a new interviewer from form values and add it to the top of the list. */
-export function addInterviewer({ name, email, round }) {
-  const record = {
-    id: `itv-${Date.now()}`,
-    name,
-    email,
-    round,
-    role: "Interviewer",
-    status: "Active",
-    avatarUrl: null,
-  };
-  interviewers = [record, ...interviewers];
+/** Fetches the organization's interviewer roster from the backend. Safe to call repeatedly. */
+export async function loadInterviewers({ force = false } = {}) {
+  if (hasLoaded && !force) return interviewers;
+  const data = await interviewerService.getAll();
+  interviewers = (data.interviewers || []).map(fromBackend);
+  hasLoaded = true;
   notify();
-  return record;
+  return interviewers;
+}
+
+/** Create a new interviewer from form values and add it to the top of the list. */
+export async function addInterviewer({ name, email, round }) {
+  try {
+    const data = await interviewerService.create({ name, email, type: round });
+    const record = fromBackend(data.interviewer);
+    interviewers = [record, ...interviewers];
+    notify();
+    return { success: true, interviewer: record, message: data.message };
+  } catch (error) {
+    return { success: false, message: extractErrorMessage(error, "Failed to add this interviewer.") };
+  }
 }
 
 /** Patch an existing interviewer (used by the edit form). */
-export function updateInterviewer(id, patch) {
-  interviewers = interviewers.map((item) =>
-    item.id === id ? { ...item, ...patch } : item
-  );
-  notify();
+export async function updateInterviewer(id, { name, email, round }) {
+  try {
+    const data = await interviewerService.update(id, { name, email, type: round });
+    const record = fromBackend(data.interviewer);
+    interviewers = interviewers.map((item) => (item.id === id ? record : item));
+    notify();
+    return { success: true, interviewer: record };
+  } catch (error) {
+    return { success: false, message: extractErrorMessage(error, "Failed to update this interviewer.") };
+  }
 }
 
 /** Remove an interviewer (used by the table's delete action). */
-export function removeInterviewer(id) {
-  interviewers = interviewers.filter((item) => item.id !== id);
-  notify();
+export async function removeInterviewer(id) {
+  try {
+    await interviewerService.remove(id);
+    interviewers = interviewers.filter((item) => item.id !== id);
+    notify();
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: extractErrorMessage(error, "Failed to remove this interviewer.") };
+  }
 }

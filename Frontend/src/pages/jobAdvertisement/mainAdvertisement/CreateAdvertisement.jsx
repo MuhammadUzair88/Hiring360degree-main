@@ -14,7 +14,10 @@ import {
   initialPamphletSettings,
   pamphletThemeDefaultColors,
 } from "../../../components/organization/jobAdvertisement/advertisement/pamphletdata";
-import { exportNodeAsPng } from "../../../components/organization/jobAdvertisement/advertisement/Pamphletutils";
+import { exportNodeAsPng, uploadDataUrlToCloudinary } from "../../../components/organization/jobAdvertisement/advertisement/Pamphletutils";
+import advertisementService from "../../../services/advertisementService";
+import { extractErrorMessage } from "../../../services/apiClient";
+import { useToast } from "../../../context/ToastContext";
 
 const REQUIRED_FIELD_LABELS = {
   jobTitle: "a Job Title",
@@ -39,6 +42,8 @@ const CreateAdvertisement = () => {
   const [submitError, setSubmitError] = useState("");
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [pamphletImageDataUrl, setPamphletImageDataUrl] = useState(null);
+  const [publishedJobId, setPublishedJobId] = useState(null);
+  const toast = useToast();
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -54,7 +59,8 @@ const CreateAdvertisement = () => {
       return Array.isArray(value) ? value.length === 0 : !value;
     });
 
-  const handlePublish = async () => {
+
+    const handlePublish = async () => {
     if (isSubmitting) return;
 
     const missing = getMissingFields();
@@ -68,20 +74,33 @@ const CreateAdvertisement = () => {
     setSubmitError("");
     setIsSubmitting(true);
     try {
-      // TODO: replace with the real endpoint once it's ready, e.g.
-      //   const { data } = await api.post("/api/advertisement/add", { ...formData, pamphlet: pamphletSettings });
-      // and use data.advertisementId below instead of undefined, so
-      // PublishSuccessModal can build a real apply link.
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      console.log("Publishing advertisement:", { ...formData, pamphlet: pamphletSettings });
-
-      try {
-        const dataUrl = await exportNodeAsPng(PUBLISH_CAPTURE_ID);
-        setPamphletImageDataUrl(dataUrl);
-      } catch (captureError) {
-        console.warn("Could not generate the campaign image.", captureError);
+      // If a pamphlet was generated, capture it and host it on Cloudinary
+      // first so its URL can ride along with the advertisement itself.
+      let generatedImageUrl = null;
+      let capturedDataUrl = null;
+      if (isPamphletGenerated) {
+        try {
+          capturedDataUrl = await exportNodeAsPng(PUBLISH_CAPTURE_ID);
+          generatedImageUrl = await uploadDataUrlToCloudinary(capturedDataUrl);
+        } catch (captureError) {
+          console.warn("Could not generate/upload the campaign image.", captureError);
+        }
       }
 
+      const payload = {
+        ...formData,
+              generatedImageUrl,
+              template: pamphletSettings.theme,
+              colors: pamphletSettings.colors?.[pamphletSettings.theme],
+              brandingPreference: pamphletSettings.branding,
+              logoSize: pamphletSettings.logoSize,
+              headingSize: pamphletSettings.headingSize,
+              };
+
+          const result = await advertisementService.create(payload);
+
+      setPamphletImageDataUrl(capturedDataUrl);
+      setPublishedJobId(result.advertisement?._id || null);
       setShowPublishModal(true);
     } catch (error) {
       setSubmitError(
@@ -89,10 +108,13 @@ const CreateAdvertisement = () => {
           error?.message ||
           "Something went wrong while publishing this job. Please try again."
       );
+       toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+
 
   const setPamphletTheme = (theme) => setPamphletSettings((prev) => ({ ...prev, theme }));
   const setPamphletBranding = (branding) => setPamphletSettings((prev) => ({ ...prev, branding }));
@@ -174,6 +196,7 @@ const CreateAdvertisement = () => {
         onReturnToDashboard={() => navigate("/advertisement")}
         formData={formData}
         pamphletImageDataUrl={pamphletImageDataUrl}
+        jobId={publishedJobId}
       />
     </>
   );

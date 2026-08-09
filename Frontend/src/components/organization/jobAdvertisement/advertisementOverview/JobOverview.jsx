@@ -1,39 +1,31 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import JobOverviewDetailsCard from "./JobOverviewDetailsCard";
 import JobOverviewAssetPanel from "./JobOverviewAssetPanel";
 import JobOverviewDescriptionCard from "./JobOverviewDescriptionCard";
 import JobOverviewSkeleton from "./JobOverviewSkeleton";
 import { PublishSuccessModal } from "../advertisement";
-import { getJobOverviewById } from "./data";
+import { useJob } from "../../../../context/JobContext";
 
 /**
  * The full "Advertisement Overview" screen for a single job, rendered
- * at /advertisement/job/:id. Owns fetching (dummy for now — swap the
- * effect for a real GET call later), the loading/not-found states,
- * and the Share modal. Reuses PublishSuccessModal as-is so the share
- * experience here is identical to the one shown right after publishing.
+ * at /advertisement/job/:id. The job itself is fetched once by
+ * SecondaryLayout's <JobProvider> — this component just reads it via
+ * useJob() and owns the Share modal's open/close state.
  */
 export default function JobOverview() {
-  const { id } = useParams();
   const navigate = useNavigate();
-  const [job, setJob] = useState(undefined); // undefined = loading, null = not found
+  const { job, error,pamphlet } = useJob();
   const [showShareModal, setShowShareModal] = useState(false);
 
-  useEffect(() => {
-    setJob(undefined);
-    const timer = setTimeout(() => setJob(getJobOverviewById(id)), 300);
-    return () => clearTimeout(timer);
-  }, [id]);
-
   if (job === undefined) return <JobOverviewSkeleton />;
-
+  
   if (job === null) {
     return (
       <div className="w-full flex flex-col items-center justify-center gap-3 py-24 text-center">
         <p className="text-black text-lg font-semibold">Job posting not found</p>
         <p className="text-black/60 text-sm max-w-sm">
-          This advertisement may have been removed, or the link is incorrect.
+          {error || "This advertisement may have been removed, or the link is incorrect."}
         </p>
         <button
           type="button"
@@ -46,6 +38,7 @@ export default function JobOverview() {
     );
   }
 
+
   return (
     <div className="w-full flex flex-col gap-6">
       <div className="flex flex-col lg:flex-row gap-6 items-stretch">
@@ -54,7 +47,7 @@ export default function JobOverview() {
           onEdit={() => navigate(`/advertisement/edit/${job._id}`)}
           onShare={() => setShowShareModal(true)}
         />
-        <JobOverviewAssetPanel job={job} />
+        <JobOverviewAssetPanel job={job} pamphlet={pamphlet} />
       </div>
 
       <JobOverviewDescriptionCard job={job} />
@@ -65,7 +58,7 @@ export default function JobOverview() {
         onReturnToDashboard={() => setShowShareModal(false)}
         formData={job}
         organizationName={job.organization?.name || "Your Company"}
-        pamphletImageDataUrl={job.generatedImageUrl}
+        pamphletImageDataUrl={pamphlet.generatedImageUrl}
         jobId={job._id}
       />
     </div>

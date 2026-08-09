@@ -11,6 +11,8 @@ import {
   DEFAULT_OFFER_VALIDITY_DAYS,
 } from "./data";
 import { DEFAULT_OFFER_COLORS } from "./Theme";
+import { useToast } from "../../../../context/ToastContext";
+import { extractErrorMessage } from "../../../../services/apiClient";
 
 /**
  * Main state hook for the Offer Letter system. Every property/action
@@ -20,6 +22,7 @@ import { DEFAULT_OFFER_COLORS } from "./Theme";
  */
 export function useOfferLetterLogic(jobId) {
   const navigate = useNavigate();
+  const toast = useToast();
 
   // ─── Core state ─────────────────────────────────────────────
   const [candidates, setCandidates] = useState([]);
@@ -50,7 +53,7 @@ export function useOfferLetterLogic(jobId) {
       setCandidates(fetchedCandidates);
       setSelectedCandidateId((prev) => prev || fetchedCandidates[0]?.applicationId || null);
 
-      const settings = getOfferLetterSettings(jobId);
+      const settings = await getOfferLetterSettings(jobId);
       if (settings) {
         setDesign({
           theme: settings.template || DEFAULT_OFFER_DESIGN.theme,
@@ -69,7 +72,7 @@ export function useOfferLetterLogic(jobId) {
         setIsConfigured(false);
       }
     } catch (err) {
-      setError(err.message || "Failed to load offer letter data");
+      setError(extractErrorMessage(err, "Failed to load offer letter data"));
     } finally {
       setIsLoading(false);
     }
@@ -83,9 +86,9 @@ export function useOfferLetterLogic(jobId) {
   // Persists the current design/signature/validity to storage. Called
   // whenever the studio closes or a setting changes "live".
   const persistSettings = useCallback(
-    (patch = {}) => {
+    async (patch = {}) => {
       if (!jobId) return;
-      saveOfferLetterSettings(jobId, {
+      const ok = await saveOfferLetterSettings(jobId, {
         template: design.theme,
         colors: design.colors,
         brandingPreference: design.brandingPreference,
@@ -98,16 +101,17 @@ export function useOfferLetterLogic(jobId) {
         offerValidityDays,
         ...patch,
       });
+      if (!ok) toast.error("Failed to save your offer letter settings. Please try again.");
     },
-    [jobId, design, signature, offerValidityDays]
+    [jobId, design, signature, offerValidityDays, toast]
   );
 
   // ─── First-time setup ───────────────────────────────────────
   const finalizeSetup = useCallback(
-    (signatureData, validityDays = DEFAULT_OFFER_VALIDITY_DAYS) => {
+    async (signatureData, validityDays = DEFAULT_OFFER_VALIDITY_DAYS) => {
       setSignature(signatureData);
       setOfferValidityDays(validityDays);
-      persistSettings({ signature: signatureData, offerValidityDays: validityDays });
+      await persistSettings({ signature: signatureData, offerValidityDays: validityDays });
       setIsConfigured(true);
     },
     [persistSettings]
@@ -118,8 +122,8 @@ export function useOfferLetterLogic(jobId) {
 
   // Design changes apply live; "closing" the studio just persists
   // whatever's currently in state and returns to the dashboard.
-  const closeStudio = useCallback(() => {
-    persistSettings();
+  const closeStudio = useCallback(async () => {
+    await persistSettings();
     setStep("dashboard");
   }, [persistSettings]);
 
@@ -135,9 +139,9 @@ export function useOfferLetterLogic(jobId) {
   }, []);
 
   const saveSignature = useCallback(
-    (newSignature) => {
+    async (newSignature) => {
       setSignature(newSignature);
-      persistSettings({ signature: newSignature });
+      await persistSettings({ signature: newSignature });
     },
     [persistSettings]
   );
@@ -166,11 +170,11 @@ export function useOfferLetterLogic(jobId) {
   // ─── Notify ──────────────────────────────────────────────────
   const candidatesWithOffers = useMemo(() => selectCandidatesWithOffers(candidates), [candidates]);
 
-  const triggerNotify = useCallback(async (applicationId) => {
+  const triggerNotify = useCallback(async (applicationId, offerLetterImageUrl) => {
     setNotifyingId(applicationId);
     setError(null);
     try {
-      const result = await notifyCandidate(applicationId);
+      const result = await notifyCandidate(applicationId, offerLetterImageUrl);
       if (result.success) {
         setCandidates((prev) =>
           prev.map((c) =>
@@ -181,13 +185,16 @@ export function useOfferLetterLogic(jobId) {
         );
       } else {
         setError(result.error || "Failed to notify candidate.");
+        toast.error(result.error || "Failed to notify candidate.");
       }
     } catch (err) {
-      setError(err.message || "Failed to notify candidate.");
+      const message = extractErrorMessage(err, "Failed to notify candidate.");
+      setError(message);
+      toast.error(message);
     } finally {
       setNotifyingId(null);
     }
-  }, []);
+  }, [toast]);
 
   // ─── Preview modal ───────────────────────────────────────────
   const openPreview = useCallback((applicationId) => setPreviewApplicationId(applicationId), []);

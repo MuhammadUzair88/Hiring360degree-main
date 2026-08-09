@@ -10,29 +10,25 @@ import InterviewFeedbackModal from "./InterviewFeedbackModal";
 import AddInterviewerModal from "./AddInterviewerModal";
 import DeleteScheduleConfirmModal from "./DeleteScheduleConfirmModal";
 
-/**
- * Entry point for a job's "Interview Rounds" tab.
- *
- * First visit for a job: renders only the RoundsSetupModal, which asks
- * HR how many rounds to run and what to call them. Once finalized
- * (saved to localStorage, keyed by job id) that popup never shows
- * again for this job — every later visit goes straight to the
- * workspace below.
- *
- * The workspace itself is identical for every round: a tab per round
- * switches `activeRoundIndex` in useRoundsLogic, and the same three
- * columns (candidate pool / schedule form / schedule list) just
- * re-render with that round's data.
- */
+
 export default function RoundsOverview({ jobId: jobIdProp }) {
   const { id: jobIdFromRoute } = useParams();
   const jobId = jobIdProp || jobIdFromRoute;
 
   const rounds = useRoundsLogic(jobId);
 
+  if (rounds.isLoadingPipeline) {
+    return (
+      <div className="w-full flex items-center justify-center py-24 text-gray-500 text-sm">
+        Loading interview pipeline…
+      </div>
+    );
+  }
+
   if (!rounds.isConfigured) {
     return <RoundsSetupModal onFinalize={rounds.finalizeRoundsConfig} />;
   }
+ 
 
   return (
     <div className="w-full flex flex-col gap-6">

@@ -6,7 +6,7 @@ import AboutRole from "./AboutRole";
 import StatusBadge from "./StatusBadge";
 import CandidateFormStructure from "./CandidateFormStructure";
 import SubmissionSuccess from "./SubmissionSuccess";
-import { dummyJob } from "./data";
+
 
 /**
  * Composes the entire candidate application experience — job header,

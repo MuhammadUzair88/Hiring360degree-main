@@ -1,3 +1,5 @@
+import offerLetterService from "../../../../services/offerLetterService";
+
 /* ────────────────────────────────────────────────────────────────────
    1. IDS & STORAGE KEYS
 ──────────────────────────────────────────────────────────────────── */
@@ -165,114 +167,91 @@ export const offeredCandidatesList = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────
-   6. INTERNAL HELPERS
-──────────────────────────────────────────────────────────────────── */
-
-// Simulates network latency so loading states are visible during dev.
-function delay(ms = 300) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function readStorage(key) {
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStorage(key, value) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/* ────────────────────────────────────────────────────────────────────
-   7. "API" — CANDIDATES
+   7. API — CANDIDATES
 ──────────────────────────────────────────────────────────────────── */
 
 /**
- * Simulates GET /api/offer/candidates/:jobId
- * Returns candidates who have passed all interview rounds for this job.
+ * GET /api/offer/candidates/:advertisementId
+ * Returns candidates who have passed all interview rounds (status
+ * "Offered") for this job, each annotated with whether an offer letter
+ * has already been generated/sent for them.
  * @returns {Promise<OfferCandidate[]>}
  */
 export async function getOfferedCandidatesByJobId(jobId) {
-  await delay();
-  if (!jobId) return offeredCandidatesList;
-  return offeredCandidatesList.filter((c) => c.jobId === jobId);
+  if (!jobId) return [];
+  const data = await offerLetterService.getOfferedCandidates(jobId);
+  return (data.candidates || []).map((c) => ({
+    ...c,
+    id: c.applicationId,
+    jobId,
+    notified: c.status === NOTIFICATION_STATUS.NOTIFIED,
+    offerContent: null,
+    offerLetterUrl: null,
+    notifiedAt: null,
+  }));
 }
 
 /**
- * Simulates GET /api/offer/letter/:applicationId
+ * GET /api/offer/letter/:applicationId
  * Returns one candidate's saved offer letter content, if any.
  */
 export async function getOfferLetterByApplicationId(applicationId) {
-  await delay(150);
-  const candidate = offeredCandidatesList.find((c) => c.applicationId === applicationId);
-  if (!candidate) return null;
+  const data = await offerLetterService.getCandidateOfferLetter(applicationId);
+  const offerLetter = data.offerLetter;
+  if (!offerLetter) return null;
 
   return {
     content: {
-      joiningDate: candidate.joiningDate || "",
-      endingDate: candidate.endingDate || "",
-      paragraph1: candidate.offerContent?.paragraph1 || "",
-      paragraph2: candidate.offerContent?.paragraph2 || "",
-      paragraph3: candidate.offerContent?.paragraph3 || "",
-      fieldsSectionLabel: candidate.offerContent?.fieldsSectionLabel || "",
-      additionalFields: candidate.offerContent?.additionalFields || [],
+      joiningDate: offerLetter.content?.joiningDate || "",
+      endingDate: offerLetter.content?.endingDate || "",
+      paragraph1: offerLetter.content?.paragraph1 || "",
+      paragraph2: offerLetter.content?.paragraph2 || "",
+      paragraph3: offerLetter.content?.paragraph3 || "",
+      fieldsSectionLabel: offerLetter.content?.fieldsSectionLabel || "",
+      additionalFields: offerLetter.content?.additionalFields || [],
     },
-    status: candidate.status || NOTIFICATION_STATUS.PENDING,
-    offerLetterUrl: candidate.offerLetterUrl || null,
+    status: offerLetter.status || NOTIFICATION_STATUS.PENDING,
+    offerLetterUrl: offerLetter.offerLetterUrl || null,
   };
 }
 
 /**
- * Simulates PUT /api/offer/letter/:applicationId
- * Saves joining/ending dates + letter content for one candidate, and
- * optionally applies the exact same payload to a bulk-selected list of
- * other candidate ids (the "Apply to Other Candidates" checkbox list).
- * Mutates the in-memory mock list so the dashboard reflects the change.
+ * PUT /api/offer/customize/:applicationId
+ * Saves joining/ending dates + letter content for one candidate. The
+ * backend only supports one application at a time, so a bulk selection
+ * is applied with one request per candidate.
  *
  * @param {string} applicationId
  * @param {{joiningDate:string, endingDate:string, offerContent:Object}} data
  * @param {string[]} [bulkApplicationIds]
  */
 export async function saveOfferLetterContent(applicationId, data, bulkApplicationIds = []) {
-  await delay(400);
   const targetIds = [applicationId, ...bulkApplicationIds];
+  const payload = {
+    joiningDate: data.joiningDate,
+    endingDate: data.endingDate || null,
+    paragraph1: data.offerContent?.paragraph1,
+    paragraph2: data.offerContent?.paragraph2,
+    paragraph3: data.offerContent?.paragraph3,
+    additionalFields: data.offerContent?.additionalFields || [],
+  };
 
-  targetIds.forEach((id) => {
-    const candidate = offeredCandidatesList.find((c) => c.applicationId === id);
-    if (!candidate) return;
-    candidate.joiningDate = data.joiningDate;
-    candidate.endingDate = data.endingDate || null;
-    candidate.offerContent = data.offerContent;
-    candidate.hasOffer = true;
-    candidate.status = candidate.notified ? candidate.status : OFFER_STATUS.GENERATED;
-  });
+  await Promise.all(targetIds.map((id) => offerLetterService.customizeCandidateOfferLetter(id, payload)));
 
   return { success: true, updatedIds: targetIds };
 }
 
 /**
- * Simulates POST /api/offer/notify/:applicationId
- * Marks a candidate as notified (or re-sends). Always resolves — swap
- * in real success/failure handling once wired to an email provider.
+ * POST /api/offer/notify/:applicationId
+ * Emails the candidate their offer letter and marks it as sent.
  */
-export async function notifyCandidate(applicationId) {
-  await delay(700);
-  const candidate = offeredCandidatesList.find((c) => c.applicationId === applicationId);
-  if (!candidate) return { success: false, error: "Candidate not found" };
-
-  candidate.notified = true;
-  candidate.status = NOTIFICATION_STATUS.NOTIFIED;
-  candidate.notifiedAt = new Date().toISOString();
-
-  return { success: true, notifiedAt: candidate.notifiedAt };
+export async function notifyCandidate(applicationId, offerLetterImageUrl) {
+  try {
+    const data = await offerLetterService.notifyCandidate(applicationId, { offerLetterImageUrl });
+    return { success: true, notifiedAt: new Date().toISOString(), offerLetter: data.offerLetter };
+  } catch (error) {
+    return { success: false, error: error.response?.data?.message || "Failed to notify candidate" };
+  }
 }
 
 /** Convenience selector: candidates that already have a generated offer. */
@@ -291,46 +270,43 @@ export function buildOfferSnapshot(candidate) {
 }
 
 /* ────────────────────────────────────────────────────────────────────
-   8. "API" — ORGANIZATION / ADVERTISEMENT
-──────────────────────────────────────────────────────────────────── */
-
-/** Simulates GET /api/organization/:jobId */
-export async function getOrganization(jobId) {
-  await delay(150);
-  return mockOrganization;
-}
-
-/** Simulates GET /api/advertisement/:jobId */
-export async function getAdvertisement(jobId) {
-  await delay(150);
-  return mockAdvertisement;
-}
-
-export function getInterviewers() {
-  return interviewerList;
-}
-
-/* ────────────────────────────────────────────────────────────────────
-   9. "API" — SETTINGS (design + signature + offer validity)
+   8. API — SETTINGS (design + signature + offer validity)
 ──────────────────────────────────────────────────────────────────── */
 
 /**
- * Simulates GET /api/offer/settings/:advertisementId
+ * GET /api/offer/settings/:advertisementId
  * Returns saved design settings, signature, and validity window.
  * Returns null on first visit so the caller knows to show setup.
  */
-export function getOfferLetterSettings(advertisementId) {
-  return readStorage(`${OFFER_STORAGE_KEY_PREFIX}${advertisementId}`);
+export async function getOfferLetterSettings(advertisementId) {
+  if (!advertisementId) return null;
+  const data = await offerLetterService.getSettings(advertisementId);
+  return data.settings || null;
 }
 
 /**
- * Simulates PUT /api/offer/settings/:advertisementId
+ * PUT /api/offer/settings/:advertisementId
  * @param {string} advertisementId
  * @param {{template?:string, colors?:Object, brandingPreference?:string,
  *   logoSize?:number, headingSize?:number, bodyFontSize?:number,
  *   signatureSize?:number, spacing?:number, signature?:Object,
  *   offerValidityDays?:number}} settings
  */
-export function saveOfferLetterSettings(advertisementId, settings) {
-  return writeStorage(`${OFFER_STORAGE_KEY_PREFIX}${advertisementId}`, settings);
+export async function saveOfferLetterSettings(advertisementId, settings) {
+  try {
+    await offerLetterService.updateSettings(advertisementId, {
+      template: settings.template,
+      colors: settings.colors,
+      brandingPreference: settings.brandingPreference,
+      logoSize: settings.logoSize,
+      headingSize: settings.headingSize,
+      bodyFontSize: settings.bodyFontSize,
+      signatureSize: settings.signatureSize,
+      spacing: settings.spacing,
+      signatureUrl: settings.signature?.url,
+    });
+    return true;
+  } catch (error) {
+    return false;
+  }
 }

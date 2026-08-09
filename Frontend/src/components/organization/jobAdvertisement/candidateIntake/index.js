@@ -14,4 +14,3 @@ export { default as CandidateInsightsPanel } from "./CandidateInsightsPanel";
 export { default as ResumePreviewPanel } from "./ResumePreviewPanel";
 export { default as RejectCandidateModal } from "./RejectCandidateModal";
 export { default as AnalyzeResumeButton } from "./AnalyzeResumeButton";
-export * from "./data";

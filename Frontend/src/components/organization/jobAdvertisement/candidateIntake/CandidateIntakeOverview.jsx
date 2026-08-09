@@ -6,35 +6,30 @@ import CandidateColumn from "./CandidateColumn";
 import CandidateCard from "./CandidateCard";
 import CandidateDetailDrawer from "./CandidateDetailDrawer";
 import RejectCandidateModal from "./RejectCandidateModal";
-import { CANDIDATE_STATUS, getCandidatesByJobId } from "./data";
-
-// Stand-in for a real network call. Swap the body for an actual
-// `fetch`/`api.put` once the backend routes exist — everything that
-// calls this already awaits it, so nothing else needs to change.
-function simulateRequest(delay = 600) {
-  return new Promise((resolve) => setTimeout(resolve, delay));
-}
+import { CANDIDATE_STATUS } from "./data";
+import applicationService from "../../../../services/applicationService";
+import { extractErrorMessage } from "../../../../services/apiClient";
+import { useToast } from "../../../../context/ToastContext";
+import { mapApplicationToCandidate } from "../../../../utils/adapters";
 
 /**
  * Owns every piece of state for the Candidate Intake screen: the
  * candidate list, which card is busy mid-request, which one is open
- * in the drawer, which one is pending a reject confirmation, which
- * candidates have been AI analyzed, and drag-and-drop state.
- * Everything else in this folder is presentation-only and just
- * receives props from here.
+ * in the drawer, which one is pending a reject confirmation, and
+ * drag-and-drop state. Everything else in this folder is
+ * presentation-only and just receives props from here.
  */
 export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
   const { id: jobIdFromRoute } = useParams();
   const jobId = jobIdProp || jobIdFromRoute;
+  const toast = useToast();
 
-  const [candidates, setCandidates] = useState(() => getCandidatesByJobId(jobId));
+  const [candidates, setCandidates] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [selectedCandidateId, setSelectedCandidateId] = useState(null);
   const [candidatePendingRejection, setCandidatePendingRejection] = useState(null);
   const [busyIds, setBusyIds] = useState({});
-
-  // Tracks which candidates have been run through the AI analyzer.
-  // Shared between the card and the drawer so the two stay in sync.
-  const [analyzedIds, setAnalyzedIds] = useState({});
   const [analyzingIds, setAnalyzingIds] = useState({});
 
   // Drag-and-drop: which candidate is currently being dragged, and
@@ -42,15 +37,27 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
   const [draggingId, setDraggingId] = useState(null);
   const [dragOverStatus, setDragOverStatus] = useState(null);
 
-  // TODO: replace with a real GET /api/application/job/:jobId call —
-  // for now the board reloads from the dummy dataset whenever the job changes.
+  const loadCandidates = async () => {
+    if (!jobId) return;
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const data = await applicationService.getByAdvertisement(jobId);
+      const applications = data.applications || [];
+      setCandidates(applications.map(mapApplicationToCandidate));
+    } catch (error) {
+      setLoadError(extractErrorMessage(error, "Failed to load candidates for this job."));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setCandidates(getCandidatesByJobId(jobId));
     setSelectedCandidateId(null);
-    setAnalyzedIds({});
-    setAnalyzingIds({});
     setDraggingId(null);
     setDragOverStatus(null);
+    loadCandidates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
   const setBusy = (candidateId, value) => setBusyIds((prev) => ({ ...prev, [candidateId]: value }));
@@ -66,14 +73,13 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
 
   const removeCandidate = (candidateId) => setCandidates((prev) => prev.filter((candidate) => candidate.id !== candidateId));
 
-  async function runStatusChange(candidate, { nextStatus, errorMessage }) {
+  async function runStatusChange(candidate, { apiCall, nextStatus, errorMessage }) {
     setBusy(candidate.id, true);
     try {
-      // TODO: replace simulateRequest() with the real PUT call once the route exists.
-      await simulateRequest();
+      await apiCall(candidate.id);
       updateCandidateStatus(candidate.id, nextStatus);
     } catch (error) {
-      alert(errorMessage);
+      toast.error(extractErrorMessage(error, errorMessage));
     } finally {
       setBusy(candidate.id, false);
     }
@@ -81,18 +87,21 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
 
   const handleBookmark = (candidate) =>
     runStatusChange(candidate, {
+      apiCall: applicationService.bookmark,
       nextStatus: CANDIDATE_STATUS.BOOKMARKED,
       errorMessage: "Failed to bookmark candidate. Please try again.",
     });
 
   const handleShortlist = (candidate) =>
     runStatusChange(candidate, {
+      apiCall: applicationService.shortlist,
       nextStatus: CANDIDATE_STATUS.SHORTLISTED,
       errorMessage: "Failed to shortlist candidate. Please try again.",
     });
 
   const handleMoveToPending = (candidate) =>
     runStatusChange(candidate, {
+      apiCall: applicationService.moveToApplied,
       nextStatus: CANDIDATE_STATUS.PENDING,
       errorMessage: "Failed to move candidate. Please try again.",
     });
@@ -103,27 +112,33 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
     setCandidatePendingRejection(null);
     setBusy(candidate.id, true);
     try {
-      // TODO: replace simulateRequest() with the real PUT call once the route exists.
-      await simulateRequest();
+      await applicationService.reject(candidate.id);
       removeCandidate(candidate.id);
       if (selectedCandidateId === candidate.id) setSelectedCandidateId(null);
+      toast.success(`${candidate.name} has been rejected.`);
     } catch (error) {
-      alert("Failed to reject candidate. Please try again.");
+      toast.error(extractErrorMessage(error, "Failed to reject candidate. Please try again."));
     } finally {
       setBusy(candidate.id, false);
     }
   };
 
-  // Runs the "AI analysis" for one candidate. In this dummy-data setup
-  // the evaluation already lives on candidate.aiEvaluation — analyzing
-  // just reveals it after a short simulated delay, standing in for the
-  // real POST /api/application/analyze/:id call you'll add later.
+  // Runs AI resume analysis for one candidate via POST /api/application/analyze/:id,
+  // then refreshes that candidate's record in place with the real result.
   const handleAnalyze = async (candidate) => {
-    if (analyzedIds[candidate.id] || analyzingIds[candidate.id]) return;
+    if (candidate.aiEvaluation || analyzingIds[candidate.id]) return;
     setAnalyzingIds((prev) => ({ ...prev, [candidate.id]: true }));
     try {
-      await simulateRequest(1400);
-      setAnalyzedIds((prev) => ({ ...prev, [candidate.id]: true }));
+      const data = await applicationService.analyzeResume(candidate.id);
+      if (data.application) {
+        const updated = mapApplicationToCandidate(data.application);
+        setCandidates((prev) => prev.map((item) => (item.id === candidate.id ? updated : item)));
+      } else {
+        // Some deployments only return the aiResult — refetch the row to stay in sync.
+        await loadCandidates();
+      }
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Failed to analyze this resume. Please try again."));
     } finally {
       setAnalyzingIds((prev) => ({ ...prev, [candidate.id]: false }));
     }
@@ -132,7 +147,7 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
   // --- Drag-and-drop wiring -------------------------------------------
   // Dropping a card on a column routes to the exact same handlers the
   // card's own action buttons use, so a drag-move and a button-click
-  // move both go through one code path (and one simulated PUT call).
+  // move both go through one code path (and one real API call).
   const handleDragStart = (candidateId) => setDraggingId(candidateId);
 
   const handleDragEnd = () => {
@@ -163,6 +178,31 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
   const bookmarked = candidates.filter((candidate) => candidate.status === CANDIDATE_STATUS.BOOKMARKED);
   const shortlisted = candidates.filter((candidate) => candidate.status === CANDIDATE_STATUS.SHORTLISTED);
 
+  if (isLoading) {
+    return (
+      <div className="w-full flex flex-col gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-24 animate-pulse rounded-xl bg-secondary-200" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="h-80 animate-pulse rounded-xl bg-secondary-200" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700">
+        {loadError}
+      </div>
+    );
+  }
+
   return (
     <div className="w-full flex flex-col gap-6">
       <CandidateIntakeStats
@@ -192,7 +232,7 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
               key={candidate.id}
               candidate={candidate}
               isBusy={isBusy(candidate.id)}
-              isAnalyzed={Boolean(analyzedIds[candidate.id])}
+              isAnalyzed={Boolean(candidate.aiEvaluation)}
               isAnalyzing={Boolean(analyzingIds[candidate.id])}
               isDragging={draggingId === candidate.id}
               onAnalyze={() => handleAnalyze(candidate)}
@@ -225,7 +265,7 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
               key={candidate.id}
               candidate={candidate}
               isBusy={isBusy(candidate.id)}
-              isAnalyzed={Boolean(analyzedIds[candidate.id])}
+              isAnalyzed={Boolean(candidate.aiEvaluation)}
               isAnalyzing={Boolean(analyzingIds[candidate.id])}
               isDragging={draggingId === candidate.id}
               onAnalyze={() => handleAnalyze(candidate)}
@@ -258,7 +298,7 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
               key={candidate.id}
               candidate={candidate}
               isBusy={isBusy(candidate.id)}
-              isAnalyzed={Boolean(analyzedIds[candidate.id])}
+              isAnalyzed={Boolean(candidate.aiEvaluation)}
               isAnalyzing={Boolean(analyzingIds[candidate.id])}
               isDragging={draggingId === candidate.id}
               onAnalyze={() => handleAnalyze(candidate)}
@@ -275,7 +315,7 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
       <CandidateDetailDrawer
         candidate={selectedCandidate}
         isBusy={selectedCandidate ? isBusy(selectedCandidate.id) : false}
-        isAnalyzed={selectedCandidate ? Boolean(analyzedIds[selectedCandidate.id]) : false}
+        isAnalyzed={selectedCandidate ? Boolean(selectedCandidate.aiEvaluation) : false}
         isAnalyzing={selectedCandidate ? Boolean(analyzingIds[selectedCandidate.id]) : false}
         onAnalyze={() => selectedCandidate && handleAnalyze(selectedCandidate)}
         onClose={() => setSelectedCandidateId(null)}

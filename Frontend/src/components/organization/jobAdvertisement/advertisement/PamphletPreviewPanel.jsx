@@ -21,7 +21,7 @@ export default function PamphletPreviewPanel({
   captureId = "pamphlet-capture",
 }) {
   const containerRef = useRef(null);
-  const [scale, setScale] = useState(0.4);
+  const [scale, setScale] = useState(0.5);
 
   useLayoutEffect(() => {
     function updateScale() {
@@ -41,11 +41,7 @@ export default function PamphletPreviewPanel({
         <div className="w-96 h-96 -left-48 bottom-0 absolute bg-primary-800 rounded-full blur-3xl" />
       </div>
 
-      {/* <div className="relative w-full flex flex-col items-center bg-red-900"> */}
-        {/* <div className="self-start pb-4 flex items-center gap-2">
-          <Eye className="w-4 h-4 text-gray-500" />
-          <span className="text-gray-700 text-sm font-medium">Live Preview Rendering</span>
-        </div> */}
+  
 
       
           <div

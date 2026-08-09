@@ -1,5 +1,5 @@
-import React from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import {
   useOfferLetterLogic,
@@ -10,99 +10,81 @@ import {
   OfferLetterSetupModal,
   OfferLetterStudio,
 } from "../../../components/organization/jobAdvertisement/offerLetter";
-import { mockOrganization, mockAdvertisement } from "../../../components/organization/jobAdvertisement/offerLetter/data";
+import { useAuth } from "../../../context/AuthContext";
+import { useJob } from "../../../context/JobContext";
 
 export default function OfferLetterPage() {
-  const { id: jobId } = useParams();
   const navigate = useNavigate();
+  const { jobId, job } = useJob();
+  const { organization } = useAuth();
 
-  const logic = useOfferLetterLogic(jobId);
-
+  const offerLetter = useOfferLetterLogic(jobId);
   const {
-    candidates,
-    selectedCandidateId,
-    selectedOfferData,
-    activeCandidate,
-    hasCandidates,
     isLoading,
     error,
+    isConfigured,
+    finalizeSetup,
     step,
-    isFirstRun,
-    isSetupComplete,
-    design,
-    signature,
-    updateDesign,
-    updateColor,
-    resetColors,
-    updateSignature,
     setStep,
-    setSelectedCandidateId,
-    handleSetupComplete,
-    saveStudioSettings,
+    openStudio,
+    closeStudio,
     openEditor,
-    saveEditorContent,
+    candidates,
+    selectedCandidateId,
+    selectCandidate,
+    activeCandidate,
+    candidatesWithOffers,
+    design,
+    updateDesign,
+    resetDesignColors,
+    signature,
+    saveSignature,
+    offerValidityDays,
     notifyingId,
     notifyTab,
     setNotifyTab,
-    handleNotify,
-  } = logic;
+    triggerNotify,
+    previewApplicationId,
+    previewCandidate,
+    openPreview,
+    closePreview,
+    getOfferForCandidate,
+  } = offerLetter;
 
-  const [previewModal, setPreviewModal] = React.useState({
-    isOpen: false,
-    candidate: null,
-    offerLetterUrl: null,
-  });
+  const [pendingSetupSkip, setPendingSetupSkip] = useState(false);
 
-  const handlePreviewCandidate = (applicationId) => {
-    const candidate = candidates.find(c => c.applicationId === applicationId);
-    if (!candidate) return;
-    const offerLetterUrl = candidate.offerLetterUrl || null;
-    setPreviewModal({
-      isOpen: true,
-      candidate,
-      offerLetterUrl,
-    });
-  };
+  const organizationForDisplay = organization || {};
+  const advertisementForDisplay = job || {};
 
-  // If first run, show setup modal
-  if (isFirstRun && step === "setup") {
+  // First visit for this job's offer letter settings: ask for a signature
+  // before anything else can be generated (skippable — a candidate can
+  // still be selected/reviewed without a signature yet).
+  if (!isLoading && !isConfigured && !pendingSetupSkip) {
     return (
       <OfferLetterSetupModal
-        isOpen={true}
-        onClose={() => {
-          // User can skip, go to dashboard with no signature
-          setStep("dashboard");
-        }}
-        onComplete={(sig) => {
-          // Handle the signature completion
-          handleSetupComplete(sig);
-        }}
-        organizationName={mockOrganization?.name || "Your Organization"}
+        onFinalize={(signatureData, validityDays) => finalizeSetup(signatureData, validityDays)}
+        organizationName={organizationForDisplay.name || "Your Organization"}
       />
     );
   }
 
-  // If in studio mode, show the studio
   if (step === "studio") {
     return (
       <OfferLetterStudio
-        isFirstRun={false}
-        organizationName={mockOrganization?.name || "Your Organization"}
-        previewCandidate={activeCandidate || null}
-        organization={mockOrganization || {}}
-        advertisement={mockAdvertisement || {}}
+        organizationName={organizationForDisplay.name || "Your Organization"}
+        organization={organizationForDisplay}
+        advertisement={advertisementForDisplay}
+        previewCandidate={activeCandidate}
         design={design}
         onDesignChange={updateDesign}
-        onResetColors={resetColors}
+        onResetColors={resetDesignColors}
         signature={signature}
-        onSignatureChange={updateSignature}
-        onSave={saveStudioSettings}
-        onBack={() => setStep("dashboard")}
+        onSignatureChange={saveSignature}
+        onBack={closeStudio}
       />
     );
   }
 
-  // Main dashboard
   return (
     <>
       <div className="space-y-6 animate-fadeIn font-sans text-slate-900 px-2">
@@ -121,13 +103,17 @@ export default function OfferLetterPage() {
           </div>
         </div>
 
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+        )}
+
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
           <div className="xl:col-span-1">
             <SelectedCandidatesCard
               candidates={candidates}
               selectedId={selectedCandidateId}
-              onSelect={setSelectedCandidateId}
-              onCreateOffer={(id) => openEditor(id, false)}
+              onSelect={selectCandidate}
+              onCreateOffer={(id) => openEditor(id)}
               isLoading={isLoading}
             />
           </div>
@@ -135,41 +121,44 @@ export default function OfferLetterPage() {
           <div className="xl:col-span-2">
             <OfferLetterCard
               candidate={activeCandidate}
-              organization={mockOrganization || {}}
-              advertisement={mockAdvertisement || {}}
+              organization={organizationForDisplay}
+              advertisement={advertisementForDisplay}
               design={design}
               signature={signature}
+              offerValidityDays={offerValidityDays}
               totalCandidates={candidates.length}
-              offer={selectedOfferData || { joiningDate: "", endingDate: "", offerContent: null }}
-              onCustomize={() => setStep("studio")}
-              onEdit={() => activeCandidate && openEditor(activeCandidate.applicationId, true)}
-              onGenerate={() => activeCandidate && openEditor(activeCandidate.applicationId, false)}
-              isLoading={isLoading}
+              onCustomize={openStudio}
+              onEdit={() => activeCandidate && openEditor(activeCandidate.applicationId)}
+              onGenerate={() => activeCandidate && openEditor(activeCandidate.applicationId)}
             />
           </div>
 
           <div className="xl:col-span-1">
             <NotifyCandidatesCard
-              candidates={candidates.filter(c => c.hasOffer)}
+              candidates={candidatesWithOffers}
               activeTab={notifyTab}
               onTabChange={setNotifyTab}
               notifyingId={notifyingId}
               selectedId={selectedCandidateId}
-              onSelect={setSelectedCandidateId}
-              onEditCandidate={(id) => openEditor(id, true)}
-              onNotify={handleNotify}
-              onPreviewCandidate={handlePreviewCandidate}
-              isLoading={isLoading}
+              onSelect={selectCandidate}
+              onEditCandidate={(id) => openEditor(id)}
+              onNotify={(id) => triggerNotify(id)}
+              onPreviewCandidate={openPreview}
             />
           </div>
         </div>
       </div>
 
       <OfferLetterPreviewModal
-        isOpen={previewModal.isOpen}
-        onClose={() => setPreviewModal({ isOpen: false, candidate: null, offerLetterUrl: null })}
-        offerLetterUrl={previewModal.offerLetterUrl}
-        candidateName={previewModal.candidate?.name}
+        isOpen={Boolean(previewApplicationId)}
+        onClose={closePreview}
+        candidate={previewCandidate}
+        organization={organizationForDisplay}
+        advertisement={advertisementForDisplay}
+        design={design}
+        signature={signature}
+        offerValidityDays={offerValidityDays}
+        offer={getOfferForCandidate(previewApplicationId)}
       />
     </>
   );

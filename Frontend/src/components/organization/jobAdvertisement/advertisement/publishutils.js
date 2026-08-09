@@ -16,7 +16,8 @@
  */
 export function buildApplyUrl(jobId) {
   if (typeof window === "undefined") return "";
-  return jobId ? `${window.location.origin}/advertisement/job/${jobId}` : `${window.location.origin}/advertisement`;
+  
+  return jobId ? `${import.meta.env.VITE_FRONTEND_URI}/apply/${jobId}` : `${import.meta.env.VITE_FRONTEND_URI}/advertisement`;
 }
 
 export function buildSocialPostText({ jobTitle, organizationName, department, applyUrl }) {

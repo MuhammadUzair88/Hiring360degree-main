@@ -26,7 +26,12 @@ const ResumePreviewPanel = ({ resume, candidateName }) => {
 
       {/* Resume Preview */}
       <div className="flex-1 min-h-[16rem] rounded-xl bg-secondary-50 shadow-sm outline outline-1 outline-offset-[-1px] outline-secondary-300 flex flex-col items-center justify-center gap-3 p-6">
-        <FileText className="w-10 h-10 text-secondary-400" />
+        {
+          resume.url ? (<iframe
+  src={`${resume.url}#toolbar=1&navpanes=0&scrollbar=1`}
+  className="w-full h-full border-0"
+/>) : (<FileText className="w-10 h-10 text-secondary-400" />)
+        }
 
         <p className="text-gray-500 text-xs text-center">
           {candidateName || "Candidate"}'s Resume (PDF)
