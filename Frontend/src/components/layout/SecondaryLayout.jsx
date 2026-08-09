@@ -3,11 +3,13 @@ import { Outlet, useParams } from "react-router-dom";
 import MainSidebar from "../sidebar/MainSidebar";
 import SecondarySidebar from "../sidebar/SecondarySidebar";
 import SecondaryHeader from "../header/SecondaryHeader";
-import { getJobOverviewById } from "../organization/jobAdvertisement/advertisementOverview";
+import { useAuth } from "../../context/AuthContext";
+import { JobProvider, useJob } from "../../context/JobContext";
 
-export default function SecondaryLayout() {
+function SecondaryLayoutContent() {
   const { id } = useParams();
-  const job = id ? getJobOverviewById(id) : null;
+  const { job } = useJob();
+  const { organization } = useAuth();
 
   const [mainNavOpen, setMainNavOpen] = useState(false);
   const [jobNavOpen, setJobNavOpen] = useState(false);
@@ -15,12 +17,15 @@ export default function SecondaryLayout() {
   return (
     <div className="min-h-screen flex bg-secondary-50">
       <MainSidebar
+        organizationName={organization?.name}
+        organizationIndustry={organization?.industry}
+        organizationLogo={organization?.logo}
         mobileOpen={mainNavOpen}
         onClose={() => setMainNavOpen(false)}
       />
       <SecondarySidebar
         jobId={id}
-        jobTitle={job?.jobTitle || "Select a job"}
+        jobTitle={job?.jobTitle || "Loading…"}
         status={job?.status || ""}
         progress={40}
         mobileOpen={jobNavOpen}
@@ -38,5 +43,13 @@ export default function SecondaryLayout() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function SecondaryLayout() {
+  return (
+    <JobProvider>
+      <SecondaryLayoutContent />
+    </JobProvider>
   );
 }

@@ -10,17 +10,22 @@ import {
   saveOfferLetterContent,
   getOfferedCandidatesByJobId,
   getOfferLetterSettings,
-  mockOrganization,
-  mockAdvertisement,
   DEFAULT_OFFER_DESIGN,
 } from "../../../components/organization/jobAdvertisement/offerLetter/data";
+import { useAuth } from "../../../context/AuthContext";
+import advertisementService from "../../../services/advertisementService";
+import { extractErrorMessage } from "../../../services/apiClient";
+import { useToast } from "../../../context/ToastContext";
 
 export default function EditOfferLetter() {
   const { jobId, applicationId } = useParams();
   const navigate = useNavigate();
+  const { organization } = useAuth();
+  const toast = useToast();
 
   const [loading, setLoading] = useState(true);
   const [candidate, setCandidate] = useState(null);
+  const [advertisement, setAdvertisement] = useState(null);
   const [otherCandidates, setOtherCandidates] = useState([]);
   const [offerData, setOfferData] = useState(null);
   const [design, setDesign] = useState(DEFAULT_OFFER_DESIGN);
@@ -29,7 +34,11 @@ export default function EditOfferLetter() {
   useEffect(() => {
     async function load() {
       try {
-        const candidates = await getOfferedCandidatesByJobId(jobId);
+        const [candidates, adData] = await Promise.all([
+          getOfferedCandidatesByJobId(jobId),
+          advertisementService.getById(jobId),
+        ]);
+        setAdvertisement(adData.advertisement || null);
 
         const selectedCandidate = candidates.find(
           (c) => c.applicationId === applicationId
@@ -60,7 +69,7 @@ export default function EditOfferLetter() {
 
         setOfferData(offer);
 
-        const settings = getOfferLetterSettings(jobId);
+        const settings = await getOfferLetterSettings(jobId);
 
         if (settings) {
           setDesign({
@@ -88,6 +97,8 @@ export default function EditOfferLetter() {
 
           setSignature(settings.signature || null);
         }
+      } catch (error) {
+        toast.error(extractErrorMessage(error, "Failed to load the offer letter editor."));
       } finally {
         setLoading(false);
       }
@@ -101,13 +112,17 @@ export default function EditOfferLetter() {
     content,
     selectedIds = []
   ) => {
-    await saveOfferLetterContent(
-      applicationId,
-      content,
-      selectedIds
-    );
-
-    navigate(`/advertisement/job/${jobId}/offer-letter`);
+    try {
+      await saveOfferLetterContent(
+        applicationId,
+        content,
+        selectedIds
+      );
+      toast.success("Offer letter saved.");
+      navigate(`/advertisement/job/${jobId}/offer-letter`);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Failed to save this offer letter."));
+    }
   };
 
   if (loading) {
@@ -129,8 +144,8 @@ export default function EditOfferLetter() {
   return (
     <OfferLetterContentEditor
       candidate={candidate}
-      organization={mockOrganization}
-      advertisement={mockAdvertisement}
+      organization={organization || {}}
+      advertisement={advertisement || {}}
       theme={design.theme}
       colors={design.colors}
       brandingPreference={design.brandingPreference}

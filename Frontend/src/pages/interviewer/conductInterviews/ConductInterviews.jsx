@@ -1,47 +1,66 @@
-// src/pages/interviewer/conductInterview/ConductInterviews.jsx
-
-import React, { useState } from "react";
-import { useLocation } from "react-router-dom";
+// src/pages/interviewer/conductInterviews/ConductInterviews.jsx
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import ConductInterviewOverview from "../../../components/interviewer/conductInterviews/ConductInterviewOverview";
-import { organization, interviewer, interviews as dummyInterviews } from "../../../components/interviewer/conductInterviews/data";
+import { useAuth } from "../../../context/AuthContext";
+import interviewerDashboardService from "../../../services/interviewerDashboardService";
+import { extractErrorMessage } from "../../../services/apiClient";
 
-/**
- * Route: /interviewers/conduct
- *
- * This is the ONLY file that should change when the backend is wired
- * up — swap the three imports above for real state (fetched via
- * api.get("/api/interviewer/dash/organization") and
- * api.get("/api/interviewer/dash/candidates"), same as the old page),
- * pass loading/error through, and everything under
- * ConductInterviewOverview keeps working exactly as it does now with
- * dummy data.
- *
- * `location.state.filter` still opens the matching drawer directly
- * when arriving here from a dashboard metric card, same as before.
- */
+function capitalize(value) {
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+}
+
+/** Route: /interviewers/conduct-interviews */
 export default function ConductInterviews() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { interviewer } = useAuth();
 
-  const [interviews] = useState(dummyInterviews);
-  const [loading] = useState(false);
-  const [error] = useState(null);
+  const [organization, setOrganization] = useState(null);
+  const [interviews, setInterviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isActive = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [orgData, candidatesData] = await Promise.all([
+          interviewerDashboardService.getOrganization(),
+          interviewerDashboardService.getCandidates(),
+        ]);
+        if (!isActive) return;
+        setOrganization(orgData.organization);
+        // Joining a call needs the schedule's callId, which this list
+        // endpoint doesn't return — the Join action routes to the
+        // candidate detail page instead, where the real call link lives.
+        setInterviews((candidatesData.candidates || []).map((item) => ({ ...item, joinLink: null })));
+      } catch (err) {
+        if (isActive) setError(extractErrorMessage(err, "Failed to load your interview schedule."));
+      } finally {
+        if (isActive) setLoading(false);
+      }
+    })();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const initialStatusFilter = location.state?.filter
     ? capitalize(location.state.filter)
     : null;
 
   const handleJoinInterview = (interview) => {
-    const link = interview.joinLink;
-    if (link) {
-      window.open(link, "_blank", "noopener,noreferrer");
-    }
+    navigate(`/interviewers/conduct-interviews/${interview.scheduleId}`);
   };
 
   return (
     <div className="">
       <ConductInterviewOverview
-        organization={organization}
-        interviewer={interviewer}
+        organization={organization || {}}
+        interviewer={{ name: interviewer?.name || "Interviewer" }}
         interviews={interviews}
         loading={loading}
         error={error}
@@ -50,8 +69,4 @@ export default function ConductInterviews() {
       />
     </div>
   );
-}
-
-function capitalize(value) {
-  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 }

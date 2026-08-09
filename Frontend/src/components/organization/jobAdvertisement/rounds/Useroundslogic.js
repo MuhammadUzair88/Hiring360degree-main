@@ -1,42 +1,70 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  CANDIDATE_OUTCOME,
-  FEEDBACK_EVALUATION,
-  SCHEDULE_STATUS,
-  getInterviewers,
-  getInterviewPipelineByJobId,
-  getScheduledInterviewsByJobId,
-  getShortlistedCandidatesByJobId,
-} from "./data";
-import { convertTo24Hour, findAvailabilityConflict, getTodayStringDate, isDateTimeInFuture, isValidTimeFormat, isInterviewFinished } from "./utils";
+import { CANDIDATE_OUTCOME, FEEDBACK_EVALUATION } from "./data";
+import { convertTo24Hour, getTodayStringDate, isDateTimeInFuture, isValidTimeFormat } from "./utils";
+import pipelineService from "../../../../services/pipelineService";
+import interviewService from "../../../../services/interviewService";
+import interviewerService from "../../../../services/interviewerService";
+import { extractErrorMessage } from "../../../../services/apiClient";
+import { useToast } from "../../../../context/ToastContext";
 
-const PIPELINE_STORAGE_KEY_PREFIX = "rounds-pipeline:";
+// ---- adapters: backend document -> the shape this folder's UI expects ----
 
-// Stand-in for a real network call — every write below awaits this
-// instead, so swapping in `api.post(...)` etc. later is a one-line
-// change per handler rather than a rewrite.
-function simulateRequest(delay = 600) {
-  return new Promise((resolve) => setTimeout(resolve, delay));
+function mapInterviewer(iv) {
+  return { id: iv._id, name: iv.name, email: iv.email, type: iv.type };
 }
 
-function readStoredRounds(jobId) {
-  try {
-    const raw = window.localStorage.getItem(`${PIPELINE_STORAGE_KEY_PREFIX}${jobId}`);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return Array.isArray(parsed?.rounds) && parsed.rounds.length > 0 ? parsed.rounds : null;
-  } catch {
-    return null;
-  }
+function mapRoundCandidate(candidate) {
+  return {
+    id: candidate.id, // candidate's own id (used as React key / outcome key)
+    applicationId: candidate.applicationId, // what scheduling actually needs
+    name: candidate.name,
+    email: candidate.email,
+    phone: candidate.phone,
+  };
 }
 
-function writeStoredRounds(jobId, rounds) {
-  try {
-    window.localStorage.setItem(`${PIPELINE_STORAGE_KEY_PREFIX}${jobId}`, JSON.stringify({ rounds }));
-  } catch {
-    // Storage can fail (private browsing, quota, etc.) — the round
-    // config just won't survive a refresh; not worth blocking on.
-  }
+function mapSchedule(sch) {
+  const feedbackStatus =
+    sch.feedback?.status || FEEDBACK_EVALUATION.PENDING;
+
+  return {
+    id: sch._id,
+    applicationId: sch.applicationId?._id || null,
+    candidateId:
+      sch.applicationId?.candidateId?._id ||
+      sch.applicationId?.candidateId ||
+      null,
+
+    candidateName: sch.candidateName,
+    candidateEmail: sch.candidateEmail,
+
+    interviewerId: sch.interviewerId,
+    interviewerName:
+      sch.interviewerDetails?.name || "Unknown Interviewer",
+
+    roundIndex: sch.roundIndex,
+    roundName: sch.roundName,
+
+    date: sch.interviewDate,
+    time: sch.interviewTime,
+
+    status: sch.status,
+
+    notified: true,
+
+    feedbackEvaluation:
+      sch.feedbackEvaluation || FEEDBACK_EVALUATION.PENDING,
+
+    feedback: sch.feedback,
+
+    passed:
+      feedbackStatus === "Passed"
+        ? true
+        : feedbackStatus === "Failed"
+        ? false
+        : null,
+  };
 }
 
 /**
@@ -50,18 +78,22 @@ function writeStoredRounds(jobId, rounds) {
  */
 export function useRoundsLogic(jobId) {
   const navigate = useNavigate();
+  const toast = useToast();
 
   // -- Pipeline (round framework) config ---------------------------------
   const [rounds, setRounds] = useState([]);
   const [isConfigured, setIsConfigured] = useState(false);
   const [activeRoundIndex, setActiveRoundIndex] = useState(0);
+  const [isLoadingPipeline, setIsLoadingPipeline] = useState(true);
 
   // -- Reference data -------------------------------------------------------
   const [interviewers, setInterviewers] = useState([]);
-  const [shortlistedCandidates, setShortlistedCandidates] = useState([]);
+  const [roundPool, setRoundPool] = useState([]);
+  const [isLoadingPool, setIsLoadingPool] = useState(true);
   const [scheduledInterviews, setScheduledInterviews] = useState([]);
-  // candidateId -> "Offered" | "Rejected". Once a candidate lands here
-  // they're done with the pipeline and drop out of every round's pool.
+  // candidateId -> "Offered" | "Rejected". Derived from decisions already
+  // reflected in scheduledInterviews (a schedule with passed=true on the
+  // pipeline's last round means "Offered"; passed=false means "Rejected").
   const [candidateOutcomes, setCandidateOutcomes] = useState({});
 
   // -- Scheduling form ------------------------------------------------------
@@ -87,77 +119,139 @@ export function useRoundsLogic(jobId) {
     setFormError("");
   };
 
-  // Reload everything whenever the job changes — mirrors the
-  // Candidate Intake board's own "board resets when job changes" rule.
+  const loadSchedules = useCallback(async () => {
+    if (!jobId) return;
+    try {
+      const data = await interviewService.getJobSchedules(jobId);
+    
+      const mapped = (data.schedules || []).map(mapSchedule);
+      setScheduledInterviews(mapped);
+
+      // A candidate is "Offered" the moment they clear the pipeline's last
+      // round, and "Rejected" the moment any round marks them failed.
+      setCandidateOutcomes((prev) => {
+        const next = { ...prev };
+        mapped.forEach((item) => {
+          if (item.passed === false) next[item.candidateId] = CANDIDATE_OUTCOME.REJECTED;
+        });
+        return next;
+      });
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Failed to load scheduled interviews."));
+    }
+  }, [jobId, toast]);
+
+  const loadRoundPool = useCallback(
+    async (roundIndex) => {
+      if (!jobId || rounds.length === 0) return;
+      setIsLoadingPool(true);
+      try {
+        const data = await interviewService.getRoundCandidates(jobId, roundIndex);
+        setRoundPool((data.candidates || []).map(mapRoundCandidate));
+      } catch (error) {
+        // A 404 here just means the pipeline isn't saved yet — not an error worth toasting.
+        setRoundPool([]);
+      } finally {
+        setIsLoadingPool(false);
+      }
+    },
+    [jobId, rounds.length]
+  );
+
+  // Reload everything whenever the job changes.
   useEffect(() => {
-    const storedRounds = readStoredRounds(jobId) || getInterviewPipelineByJobId(jobId)?.rounds || null;
-    setRounds(storedRounds || []);
-    setIsConfigured(Boolean(storedRounds));
-    setActiveRoundIndex(0);
-    setInterviewers(getInterviewers());
-    setShortlistedCandidates(getShortlistedCandidatesByJobId(jobId));
-    setScheduledInterviews(getScheduledInterviewsByJobId(jobId));
-    setCandidateOutcomes({});
+    let isActive = true;
     setSelectedCandidateId(null);
     setEditingScheduleId(null);
     setActiveTab("upcoming");
     setDeleteConfirmId(null);
     setFeedbackScheduleId(null);
+    setActiveRoundIndex(0);
     resetFormFields();
+
+    (async () => {
+      setIsLoadingPipeline(true);
+      try {
+        const [pipelineData, interviewerData] = await Promise.all([
+          pipelineService.getPipeline(jobId),
+          interviewerService.getAll(),
+        ]);
+        if (!isActive) return;
+        const fetchedRounds = pipelineData.rounds || [];
+        setRounds(fetchedRounds);
+        setIsConfigured(fetchedRounds.length > 0);
+        setInterviewers((interviewerData.interviewers || []).map(mapInterviewer));
+      } catch (error) {
+        if (isActive) toast.error(extractErrorMessage(error, "Failed to load the interview pipeline."));
+      } finally {
+        if (isActive) setIsLoadingPipeline(false);
+      }
+    })();
+
+    loadSchedules();
+    return () => {
+      isActive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
-  // -- Derived: per-round candidate pools --------------------------------
-  // A candidate sits in round N's pool once they've passed round N-1 (or
-  // in round 0 by default), and disappears entirely once they've been
-  // offered or rejected at any point.
-  const roundPools = useMemo(() => {
-    const pools = rounds.map(() => []);
-    shortlistedCandidates.forEach((candidate) => {
-      if (candidateOutcomes[candidate.candidateId]) return;
-      const ownSchedules = scheduledInterviews.filter((item) => item.candidateId === candidate.candidateId);
-      const passedRounds = ownSchedules.filter((item) => item.passed === true).map((item) => item.roundIndex);
-      const targetRound = passedRounds.length > 0 ? Math.max(...passedRounds) + 1 : 0;
-      if (pools[targetRound]) pools[targetRound].push(candidate);
-    });
-    return pools;
-  }, [rounds, shortlistedCandidates, scheduledInterviews, candidateOutcomes]);
+  // Reload this round's candidate pool whenever the active round (or the
+  // pipeline itself) changes.
+  useEffect(() => {
+    loadRoundPool(activeRoundIndex);
+  }, [activeRoundIndex, loadRoundPool]);
 
   const activeRoundName = rounds[activeRoundIndex] || "";
   const isLastRound = activeRoundIndex === rounds.length - 1;
-  const activeRoundPool = roundPools[activeRoundIndex] || [];
-  const poolCounts = roundPools.map((pool) => pool.length);
+  // Candidates already sitting on an undecided slot for this round don't
+  // belong in the "still needs scheduling" pool.
+  const scheduledCandidateIds = new Set(
+    scheduledInterviews
+      .filter((item) => item.roundIndex === activeRoundIndex && item.passed === null)
+      .map((item) => item.candidateId)
+  );
+  const activeRoundPool = roundPool.filter(
+    (candidate) => !candidateOutcomes[candidate.id]
+  );
+  const poolCounts = rounds.map(() => null); // per-round counts aren't fetched up front; only the active round's pool is loaded
 
   const activeRoundSchedules = scheduledInterviews.filter((item) => item.roundIndex === activeRoundIndex);
-  const upcomingInterviews = activeRoundSchedules.filter((item) => !isInterviewFinished(item));
-  const reviewInterviews = activeRoundSchedules.filter((item) => isInterviewFinished(item));
+  // const upcomingInterviews = activeRoundSchedules.filter((item) => !isInterviewFinished(item));
+  // const reviewInterviews = activeRoundSchedules.filter((item) => isInterviewFinished(item));
+const upcomingInterviews = activeRoundSchedules.filter(
+  (item) =>
+    item.status === "Scheduled" &&
+    item.feedbackEvaluation !== FEEDBACK_EVALUATION.COMPLETED &&
+    item.passed === null
+);
 
-  // Candidates already sitting in a not-yet-decided slot for this round
-  // — used to grey out their "Schedule" button in the pool panel.
-  const scheduledCandidateIds = new Set(
-    activeRoundSchedules.filter((item) => item.passed === null).map((item) => item.candidateId)
-  );
-
+const reviewInterviews = activeRoundSchedules.filter(
+  (item) =>
+    item.feedbackEvaluation === FEEDBACK_EVALUATION.COMPLETED ||
+    item.passed !== null
+);
   const editingSchedule = scheduledInterviews.find((item) => item.id === editingScheduleId) || null;
   const selectedCandidate = activeRoundPool.find((candidate) => candidate.id === selectedCandidateId) || null;
   const feedbackSchedule = scheduledInterviews.find((item) => item.id === feedbackScheduleId) || null;
 
   const normalizedTime = convertTo24Hour(time);
-  const availabilityConflict = findAvailabilityConflict({
-    scheduledInterviews,
-    interviewerId,
-    date,
-    time: normalizedTime,
-    excludeScheduleId: editingScheduleId,
-  });
+  // The backend itself rejects double-bookings (409) at submit time with a
+  // precise message, so we surface that instead of duplicating the
+  // conflict-detection logic on the client.
+  const availabilityConflict = null;
 
   // -- Pipeline setup -----------------------------------------------------------
-  const finalizeRoundsConfig = (roundNames) => {
+  const finalizeRoundsConfig = async (roundNames) => {
     const cleaned = roundNames.map((name) => name.trim()).filter(Boolean);
     if (cleaned.length === 0) return;
-    writeStoredRounds(jobId, cleaned);
-    setRounds(cleaned);
-    setIsConfigured(true);
-    setActiveRoundIndex(0);
+    try {
+      await pipelineService.createPipeline(jobId, { rounds: cleaned });
+      setRounds(cleaned);
+      setIsConfigured(true);
+      setActiveRoundIndex(0);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Failed to save the interview pipeline."));
+    }
   };
 
   // -- Candidate selection --------------------------------------------------------
@@ -198,82 +292,94 @@ export function useRoundsLogic(jobId) {
 
     if (editingScheduleId) {
       setIsSubmitting(true);
-      await simulateRequest();
-      const interviewer = interviewers.find((item) => item.id === interviewerId);
-      setScheduledInterviews((prev) =>
-        prev.map((item) =>
-          item.id === editingScheduleId
-            ? { ...item, interviewerId, interviewerName: interviewer?.name || item.interviewerName, date, time: normalizedTime, notified: false }
-            : item
-        )
-      );
-      setIsSubmitting(false);
-      cancelEdit();
+      try {
+        await interviewService.updateSchedule(editingScheduleId, {
+          interviewerId,
+          interviewDate: date,
+          interviewTime: normalizedTime,
+        });
+        await loadSchedules();
+        cancelEdit();
+      } catch (error) {
+        setFormError(extractErrorMessage(error, "Failed to update this interview."));
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
     if (!selectedCandidateId) return setFormError("Pick a candidate from the list first.");
     if (!isDateTimeInFuture(date, normalizedTime)) return setFormError("Interviews can't be scheduled in the past.");
-    if (availabilityConflict) return setFormError(`${availabilityConflict.interviewerName} already has a slot at that time.`);
+
+    const candidate = activeRoundPool.find((item) => item.id === selectedCandidateId);
+    if (!candidate?.applicationId) return setFormError("This candidate's application couldn't be found.");
 
     setIsSubmitting(true);
-    await simulateRequest();
-    const candidate = activeRoundPool.find((item) => item.id === selectedCandidateId);
-    const interviewer = interviewers.find((item) => item.id === interviewerId);
-    const newSchedule = {
-      id: `sch-${Date.now()}`,
-      jobId,
-      candidateId: candidate.candidateId,
-      candidateName: candidate.name,
-      candidateEmail: candidate.email,
-      interviewerId,
-      interviewerName: interviewer?.name,
-      roundIndex: activeRoundIndex,
-      date,
-      time: normalizedTime,
-      status: SCHEDULE_STATUS.SCHEDULED,
-      notified: false,
-      feedbackEvaluation: FEEDBACK_EVALUATION.PENDING,
-      feedback: null,
-      passed: null,
-    };
-    setScheduledInterviews((prev) => [...prev, newSchedule]);
-    setIsSubmitting(false);
-    resetFormFields();
-    setSelectedCandidateId(null);
+    try {
+      await interviewService.schedule({
+        applicationId: candidate.applicationId,
+        interviewerId,
+        roundIndex: activeRoundIndex,
+        interviewDate: date,
+        interviewTime: normalizedTime,
+      });
+      await Promise.all([loadSchedules(), loadRoundPool(activeRoundIndex)]);
+      resetFormFields();
+      setSelectedCandidateId(null);
+      toast.success(`Interview scheduled with ${candidate.name}.`);
+    } catch (error) {
+      setFormError(extractErrorMessage(error, "Failed to schedule this interview."));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // -- Interviewer directory -----------------------------------------------------
   const openAddInterviewer = () => setIsAddInterviewerOpen(true);
   const closeAddInterviewer = () => setIsAddInterviewerOpen(false);
   const addInterviewer = async (details) => {
-    await simulateRequest(400);
-    const interviewer = { id: `int-${Date.now()}`, ...details };
-    setInterviewers((prev) => [interviewer, ...prev]);
-    setInterviewerId(interviewer.id);
-    setIsAddInterviewerOpen(false);
+    try {
+      const data = await interviewerService.create(details);
+      const interviewer = mapInterviewer(data.interviewer);
+      setInterviewers((prev) => [interviewer, ...prev]);
+      setInterviewerId(interviewer.id);
+      setIsAddInterviewerOpen(false);
+      toast.success(`${interviewer.name} added to your interviewer directory.`);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Failed to add this interviewer."));
+    }
   };
 
   // -- Notifications ------------------------------------------------------------------
   const triggerNotify = async (scheduleId) => {
     if (sendingEmailIds.has(scheduleId)) return;
     setSendingEmailIds((prev) => new Set(prev).add(scheduleId));
-    await simulateRequest(700);
-    setScheduledInterviews((prev) => prev.map((item) => (item.id === scheduleId ? { ...item, notified: true } : item)));
-    setSendingEmailIds((prev) => {
-      const next = new Set(prev);
-      next.delete(scheduleId);
-      return next;
-    });
+    try {
+      await interviewService.resendEmail(scheduleId);
+      toast.success("Interview invitation resent.");
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Failed to resend the invitation."));
+    } finally {
+      setSendingEmailIds((prev) => {
+        const next = new Set(prev);
+        next.delete(scheduleId);
+        return next;
+      });
+    }
   };
 
   // -- Delete ------------------------------------------------------------------------------
+  // NOTE: the backend doesn't expose a cancel/delete endpoint for a
+  // scheduled interview (only create / reschedule / decide). Confirming
+  // here removes the card from view; ask an admin to cancel the meeting
+  // on the video-call side if it's already been sent out.
   const requestDeleteSchedule = (scheduleId) => setDeleteConfirmId(scheduleId);
   const cancelDeleteSchedule = () => setDeleteConfirmId(null);
   const confirmDeleteSchedule = () => {
     setScheduledInterviews((prev) => prev.filter((item) => item.id !== deleteConfirmId));
     if (editingScheduleId === deleteConfirmId) cancelEdit();
     setDeleteConfirmId(null);
+    toast.info("Removed from this view. This does not cancel the meeting invite already sent.");
   };
 
   // -- Feedback + decisions ----------------------------------------------------------------
@@ -283,47 +389,50 @@ export function useRoundsLogic(jobId) {
   const acceptCandidate = async (scheduleId) => {
     const schedule = scheduledInterviews.find((item) => item.id === scheduleId);
     if (!schedule) return;
-    if (!window.confirm("Move this candidate on to the next round?")) return;
-    await simulateRequest();
-    setScheduledInterviews((prev) => prev.map((item) => (item.id === scheduleId ? { ...item, passed: true } : item)));
-    const nextRoundIndex = schedule.roundIndex + 1;
-    if (nextRoundIndex >= rounds.length) {
-      setCandidateOutcomes((prev) => ({ ...prev, [schedule.candidateId]: CANDIDATE_OUTCOME.OFFERED }));
-      window.alert(`${schedule.candidateName} has cleared every round and is ready for an offer.`);
-      navigate(`/advertisement/job/${jobId}/offer-letter`);
-    } else {
-      window.alert(`${schedule.candidateName} moves on to ${rounds[nextRoundIndex]}.`);
-      setActiveRoundIndex(nextRoundIndex);
+    try {
+      const data = await interviewService.decideRoundOutcome(scheduleId, { decision: "accept" });
+      await loadSchedules();
+      if (data.isOffered) {
+        setCandidateOutcomes((prev) => ({ ...prev, [schedule.candidateId]: CANDIDATE_OUTCOME.OFFERED }));
+        toast.success(`${schedule.candidateName} has cleared every round and is ready for an offer.`);
+        navigate(`/advertisement/job/${jobId}/offer-letter`);
+      } else {
+        toast.success(`${schedule.candidateName} moves on to ${data.nextRoundName}.`);
+        setActiveRoundIndex(data.nextRoundIndex);
+      }
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Failed to record this decision."));
+    } finally {
+      closeFeedback();
     }
-    closeFeedback();
   };
 
   const rejectCandidate = async (scheduleId) => {
     const schedule = scheduledInterviews.find((item) => item.id === scheduleId);
     if (!schedule) return;
-    await simulateRequest();
-    setScheduledInterviews((prev) => prev.map((item) => (item.id === scheduleId ? { ...item, passed: false } : item)));
-    setCandidateOutcomes((prev) => ({ ...prev, [schedule.candidateId]: CANDIDATE_OUTCOME.REJECTED }));
-    window.alert(`${schedule.candidateName} has been rejected.`);
-    closeFeedback();
+    try {
+      await interviewService.decideRoundOutcome(scheduleId, { decision: "reject" });
+      await loadSchedules();
+      setCandidateOutcomes((prev) => ({ ...prev, [schedule.candidateId]: CANDIDATE_OUTCOME.REJECTED }));
+      toast.info(`${schedule.candidateName} has been rejected.`);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Failed to record this decision."));
+    } finally {
+      closeFeedback();
+    }
   };
 
-  const directOfferCandidate = async (scheduleId) => {
-    const schedule = scheduledInterviews.find((item) => item.id === scheduleId);
-    if (!schedule) return;
-    if (!window.confirm(`Send ${schedule.candidateName} straight to the offer letter, skipping any remaining rounds?`)) return;
-    await simulateRequest();
-    setScheduledInterviews((prev) => prev.map((item) => (item.id === scheduleId ? { ...item, passed: true } : item)));
-    setCandidateOutcomes((prev) => ({ ...prev, [schedule.candidateId]: CANDIDATE_OUTCOME.OFFERED }));
-    window.alert(`${schedule.candidateName} is on the way to the offer letter.`);
-    closeFeedback();
-    navigate(`/advertisement/job/${jobId}/offer-letter`);
-  };
+  // The backend's decision endpoint only supports accept/reject for the
+  // current round — there's no dedicated "skip straight to offer" action,
+  // so this accepts the current round like normal and lets the pipeline's
+  // own "last round" check decide whether that means an offer.
+  const directOfferCandidate = async (scheduleId) => acceptCandidate(scheduleId);
 
   return {
     // pipeline
     rounds,
     isConfigured,
+    isLoadingPipeline,
     finalizeRoundsConfig,
     activeRoundIndex,
     setActiveRoundIndex,
@@ -332,6 +441,7 @@ export function useRoundsLogic(jobId) {
     poolCounts,
     // pool
     activeRoundPool,
+    isLoadingPool,
     scheduledCandidateIds,
     selectedCandidateId,
     selectedCandidate,

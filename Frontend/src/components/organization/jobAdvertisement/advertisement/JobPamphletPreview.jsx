@@ -50,10 +50,11 @@ export default function JobPamphletPreview({
   organizationName = "Your Company",
   organizationLogoUrl = null,
 }) {
+  
   const { employmentTypeDisplay, compensationDisplay } = deriveJobDisplay(job);
   const skills = Array.isArray(job.skills) ? job.skills : [];
   const metaItems = buildMetaItems(job, employmentTypeDisplay, compensationDisplay);
-
+  console.log(organizationLogoUrl)
   const scaleLogo = (Number(logoSize) || 100) / 100;
   const scaleHeading = (Number(headingSize) || 100) / 100;
   const headingStyle = { fontSize: `${3 * scaleHeading}rem`, lineHeight: 1.15, maxHeight: `${120 * scaleHeading}px` };

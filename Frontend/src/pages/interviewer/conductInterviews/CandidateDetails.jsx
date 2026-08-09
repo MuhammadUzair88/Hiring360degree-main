@@ -1,34 +1,59 @@
-// src/pages/interviewer/conductInterview/CandidateDetails.jsx
-
-import React from "react";
+// src/pages/interviewer/conductInterviews/CandidateDetails.jsx
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
 import CandidateDetailOverview from "../../../components/interviewer/conductInterviews/CandidateDetailOverview";
-import { getCandidateDetails } from "../../../components/interviewer/conductInterviews/candidatedetailsdata";
+import interviewerDashboardService from "../../../services/interviewerDashboardService";
 
 const ROSTER_PATH = "/interviewers/conduct-interviews";
 
 /**
  * Route: /interviewers/conduct-interviews/:id
  *
- * Looks the candidate up from dummy data by id today. When the
- * backend is wired up, replace the `getCandidateDetails` call with
- * `api.get(`/api/interviewer/dash/candidates/${id}`)` behind
- * loading/error state (same pattern as the old CandidateDetailsPage)
- * — CandidateDetailOverview and everything under it stays unchanged,
- * it just receives the same `candidate` shape from a real fetch
- * instead of candidateDetailsData.js.
+ * Note on the resume section: the backend only stores the candidate's
+ * uploaded resume as a file URL (`application.resume.url`), not a
+ * structured/parsed resume (experience, projects, education, etc).
+ * `ResumeDocumentPreview` was built to render that richer structure —
+ * without a resume-parsing endpoint to populate it, only the
+ * file-level actions (view/download/print) are wired to something
+ * real; the structured sections simply don't render, which the
+ * component already handles gracefully via optional chaining.
  */
 export default function CandidateDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const candidate = getCandidateDetails(id);
+  const [candidate, setCandidate] = useState(undefined); // undefined = loading, null = not found
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isActive = true;
+    setCandidate(undefined);
+    interviewerDashboardService
+      .getCandidateById(id)
+      .then((data) => {
+        if (!isActive) return;
+        const raw = data.candidate;
+        setCandidate({
+          ...raw,
+          candidateName: raw.name,
+          resume: raw.resume ? { fileUrl: raw.resume } : null,
+        });
+      })
+      .catch((err) => {
+        if (isActive) {
+          setCandidate(null);
+          setError(err.response?.data?.message || "Failed to load this candidate.");
+        }
+      });
+    return () => {
+      isActive = false;
+    };
+  }, [id]);
 
   const handleJoinInterview = () => {
-    if (candidate?.meetingLink) {
-      window.open(candidate.meetingLink, "_blank", "noopener,noreferrer");
-    }
+    if (candidate?.callId) navigate(`/interview/${candidate.callId}`);
+    else if (candidate?.meetingLink) window.open(candidate.meetingLink, "_blank", "noopener,noreferrer");
   };
 
   const handleSubmitFeedback = () => {
@@ -39,6 +64,14 @@ export default function CandidateDetails() {
     navigate(`/interviewers/evaluation/${candidate.scheduleId}`);
   };
 
+  if (candidate === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-secondary-100 p-4 text-sm text-gray-500">
+        Loading candidate…
+      </div>
+    );
+  }
+
   if (!candidate) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary-100 p-4">
@@ -46,7 +79,7 @@ export default function CandidateDetails() {
           <AlertCircle className="w-12 h-12 text-danger-500 mx-auto mb-4" />
           <h3 className="text-slate-900 text-lg font-semibold mb-2">Candidate Not Found</h3>
           <p className="text-black/50 text-sm mb-6">
-            This interview schedule doesn't exist or may have been removed.
+            {error || "This interview schedule doesn't exist or may have been removed."}
           </p>
           <Link
             to={ROSTER_PATH}

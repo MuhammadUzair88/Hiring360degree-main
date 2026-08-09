@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { X, ShieldCheck } from "lucide-react";
 import { emptyInterviewerFormValues } from "./interviewerdata";
 import { findInterviewer, addInterviewer, updateInterviewer } from "./InterviewerStore";
+import { useToast } from "../../../context/ToastContext";
 
 /**
  * Add/Edit Interviewer — blurred backdrop + centered card, no route change.
@@ -16,6 +17,7 @@ import { findInterviewer, addInterviewer, updateInterviewer } from "./Interviewe
  */
 export default function InterviewerFormModal({ isOpen, interviewerId = null, onClose = () => {} }) {
   const isEditMode = Boolean(interviewerId);
+  const toast = useToast();
 
   const existingInterviewer = useMemo(
     () => (isEditMode ? findInterviewer(interviewerId) : null),
@@ -23,6 +25,8 @@ export default function InterviewerFormModal({ isOpen, interviewerId = null, onC
   );
 
   const [values, setValues] = useState(emptyInterviewerFormValues);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -31,6 +35,7 @@ export default function InterviewerFormModal({ isOpen, interviewerId = null, onC
         ? { name: existingInterviewer.name, email: existingInterviewer.email, round: existingInterviewer.round }
         : emptyInterviewerFormValues
     );
+    setFormError("");
   }, [isOpen, existingInterviewer]);
 
   useEffect(() => {
@@ -51,14 +56,25 @@ export default function InterviewerFormModal({ isOpen, interviewerId = null, onC
     setValues((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isEditMode) {
-      updateInterviewer(existingInterviewer.id, values);
+    setFormError("");
+    setIsSubmitting(true);
+    const result = isEditMode
+      ? await updateInterviewer(existingInterviewer.id, values)
+      : await addInterviewer(values);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      toast.success(
+        isEditMode
+          ? `${values.name}'s details were updated.`
+          : `${values.name} was added and emailed their login credentials.`
+      );
+      onClose();
     } else {
-      addInterviewer(values);
+      setFormError(result.message);
     }
-    onClose();
   };
 
   if (isEditMode && !existingInterviewer) {
@@ -152,12 +168,22 @@ export default function InterviewerFormModal({ isOpen, interviewerId = null, onC
             </div>
           </div>
 
+          {formError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {formError}
+            </div>
+          )}
+
           <div className="pt-6 border-t border-secondary-300 flex justify-end items-center gap-4">
             <button type="button" onClick={onClose} className="px-6 py-3 text-neutral-600 text-base font-medium hover:text-gray-900 transition-colors">
               Cancel
             </button>
-            <button type="submit" className="px-8 py-3 bg-primary-600 rounded-xl text-violet-100 text-base font-semibold shadow-[0px_10px_15px_-3px_rgba(124,58,237,0.20)] hover:bg-primary-700 transition-colors">
-              {submitLabel}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-8 py-3 bg-primary-600 rounded-xl text-violet-100 text-base font-semibold shadow-[0px_10px_15px_-3px_rgba(124,58,237,0.20)] hover:bg-primary-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? "Saving…" : submitLabel}
             </button>
           </div>
         </div>

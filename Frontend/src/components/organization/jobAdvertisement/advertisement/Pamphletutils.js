@@ -35,3 +35,30 @@ export function openImageForPrint(dataUrl, title = "Job Pamphlet") {
   );
   printWindow.document.close();
 }
+
+
+/**
+ * Uploads a PNG data URL to Cloudinary (same unsigned-preset flow
+ * ApplicationContext.jsx uses for resumes) and returns the hosted
+ * https URL. This is how the client-rendered pamphlet becomes the
+ * `generatedImageUrl` the backend stores on the advertisement.
+ */
+export async function uploadDataUrlToCloudinary(dataUrl) {
+  const blob = await (await fetch(dataUrl)).blob();
+  const formData = new FormData();
+  formData.append("file", blob);
+  formData.append("upload_preset", import.meta.env.VITE_PRESET);
+  formData.append("cloud_name", import.meta.env.VITE_CLOUDINARY_NAME);
+
+  const response = await fetch(import.meta.env.VITE_CLOUDINARY_URL, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to upload the pamphlet image.");
+  }
+
+  const uploaded = await response.json();
+  return uploaded.secure_url;
+}

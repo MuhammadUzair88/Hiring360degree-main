@@ -2,8 +2,10 @@
 //
 // Composition root for the Candidate Evaluation screen. Owns all form
 // state and hands plain data + callbacks down to each presentational
-// sub-component as props. `data` is expected to match the shape exported
-// from ./candidateEvaluationData.
+// sub-component as props. `data` is normalized by the page
+// (pages/interviewer/evaluation/CandidateEvaluation.jsx) from
+// GET /api/interviewer/dash/evaluations/:id, and `onSubmit` posts the
+// completed scorecard to POST /api/interviewer/dash/evaluations/:id.
 
 import React, { useState } from "react";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
@@ -12,8 +14,10 @@ import InterviewFocusCard from "./InterviewFocusCard";
 import CompetencyAssessment from "./CompetencyAssessment";
 import StrengthsImprovementsSection from "./StrengthsImprovementsSection";
 import FinalRecommendationCard from "./FinalRecommendationCard";
+import { useToast } from "../../../context/ToastContext";
 
-export default function CandidateEvaluationOverview({ data, onBack, onViewResume }) {
+export default function CandidateEvaluationOverview({ data, onBack, onViewResume, onSubmit }) {
+  const toast = useToast();
   const { candidate, interviewFocus, competencyCategories, recommendationOptions, evaluation } = data;
 
   const initialRatings = competencyCategories.reduce((acc, cat) => {
@@ -35,7 +39,7 @@ export default function CandidateEvaluationOverview({ data, onBack, onViewResume
     setRatings((prev) => ({ ...prev, [categoryId]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const allRated = competencyCategories.every((cat) => ratings[cat.id] > 0);
 
     if (!allRated) {
@@ -60,16 +64,22 @@ export default function CandidateEvaluationOverview({ data, onBack, onViewResume
     );
     if (!confirmed) return;
 
-    // Front-end only: this simulates a network round trip against the
-    // dummy data. Replace this block with a real API call (e.g. a POST to
-    // /api/interviewer/dash/evaluations/:id) once the backend is wired up —
-    // nothing else in this component tree needs to change.
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      await onSubmit?.({
+        ...ratings,
+        coreStrengths: strengths,
+        areasForImprovement: improvements,
+        recommendation,
+        finalComments,
+      });
       setIsSubmitted(true);
       setShowSuccess(true);
-    }, 900);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to submit this evaluation. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

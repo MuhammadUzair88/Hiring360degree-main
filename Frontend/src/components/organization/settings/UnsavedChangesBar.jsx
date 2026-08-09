@@ -16,6 +16,7 @@ export default function UnsavedChangesBar({
   message = unsavedChangesCopy.message,
   discardLabel = unsavedChangesCopy.discardLabel,
   saveLabel = unsavedChangesCopy.saveLabel,
+  isSaving = false,
   onDiscard = () => {},
   onSave = () => {},
 }) {
@@ -30,16 +31,18 @@ export default function UnsavedChangesBar({
           <button
             type="button"
             onClick={onDiscard}
-            className="px-6 py-2 text-neutral-600 text-sm font-bold leading-5 hover:text-gray-900 transition-colors"
+            disabled={isSaving}
+            className="px-6 py-2 text-neutral-600 text-sm font-bold leading-5 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {discardLabel}
           </button>
           <button
             type="button"
             onClick={onSave}
-            className="px-6 py-2 bg-primary-800 rounded-lg text-white text-sm font-bold leading-5 hover:bg-primary-700 transition-colors"
+            disabled={isSaving}
+            className="px-6 py-2 bg-primary-800 rounded-lg text-white text-sm font-bold leading-5 hover:bg-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {saveLabel}
+            {isSaving ? "Saving…" : saveLabel}
           </button>
         </div>
       </div>

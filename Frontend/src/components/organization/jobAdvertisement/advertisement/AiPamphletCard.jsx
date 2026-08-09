@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { Zap, Loader2, Pencil } from "lucide-react";
 import JobPamphletPreview from "../advertisement/JobPamphletPreview";
+import { useAuth } from "../../../../context/AuthContext";
 
 /**
  * "AI Assistant" sidebar card.
@@ -25,7 +26,7 @@ export default function AIPamphletCard({
 }) {
   const thumbnailRef = useRef(null);
   const [scale, setScale] = useState(0.24);
-
+  const {organization} = useAuth()
   useLayoutEffect(() => {
     if (!isGenerated) return;
     function updateScale() {
@@ -72,6 +73,8 @@ export default function AIPamphletCard({
                 branding={branding}
                 logoSize={logoSize}
                 headingSize={headingSize}
+                organizationName={organization.name}
+              organizationLogoUrl={organization.logo}
               />
             </div>
 

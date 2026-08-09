@@ -1,16 +1,3 @@
-export const dummyJob = {
-  _id: "6a6ee9f0665b736d7c2971f6",
-  jobTitle: "Senior Engineer",
-  description:
-    "We're looking for a Senior Engineer to join our product team. You'll own features end-to-end, mentor junior engineers, and help shape our technical roadmap.",
-  deadline: "2026-08-04T00:00:00.000Z",
-  organization: {
-    name: "Grainup",
-    logo: "",
-    organizationId: "64f1a2b3c4d5e6f7a8b9c0d1",
-  },
-};
-
 /** Initial state for the candidate application form */
 export const initialCandidateFormState = {
   name: "",
@@ -56,29 +43,3 @@ export const validators = {
   },
 };
 
-/**
- * Placeholder submit handler — simulates a network request (with a short
- * delay and a console log of the payload) so the form can be built and
- * tested with zero backend dependency. CandidateFormStructure falls back
- * to this automatically; pass a real `onSubmit` prop once your endpoint
- * is ready, e.g.:
- *
- *   <CandidateFormStructure onSubmit={(payload) => api.post("/api/candidate/apply", payload)} />
- */
-export const submitCandidateApplication = (payload) =>
-  new Promise((resolve) => {
-    console.log("Submitting application (mock):", payload);
-    setTimeout(() => resolve({ success: true }), 900);
-  });
-
-/**
- * Placeholder job-fetch — simulates GET /api/form/apply/:id so the page
- * renders with zero backend/config dependency. CandidateForm (the page)
- * calls this by default; swap it for a real `api.get(...)` call once you
- * have a config/api file and a live endpoint.
- */
-export const fetchCandidateJob = (id) =>
-  new Promise((resolve) => {
-    console.log("Fetching job (mock) for id:", id);
-    setTimeout(() => resolve({ job: dummyJob }), 900);
-  });

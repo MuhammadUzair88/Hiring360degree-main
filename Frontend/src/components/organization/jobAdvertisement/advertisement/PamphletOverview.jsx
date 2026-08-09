@@ -9,6 +9,7 @@ import JobPamphletPreview from "./JobPamphletPreview";
 import SegmentedOptionControl from "./SegmentedOptionControl";
 import { pamphletHeader, pamphletBrandingOptions } from "./pamphletdata";
 import { exportNodeAsPng, openImageForPrint } from "./Pamphletutils";
+import { useAuth } from "../../../../context/AuthContext";
 
 const CAPTURE_ID = "pamphlet-capture";
 
@@ -25,6 +26,7 @@ export default function PamphletOverview({
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const { organization } = useAuth();
 
   const { theme, branding, logoSize, headingSize, colors } = pamphletSettings;
   const currentColors = colors?.[theme] || {};
@@ -51,20 +53,28 @@ export default function PamphletOverview({
   return (
     <div className="w-full flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-slate-900 text-2xl sm:text-3xl font-semibold leading-tight">{pamphletHeader.title}</h1>
-        <p className="text-gray-700 text-base leading-6">{pamphletHeader.subtitle}</p>
+        <h1 className="text-slate-900 text-2xl sm:text-3xl font-semibold leading-tight">
+          {pamphletHeader.title}
+        </h1>
+        <p className="text-gray-700 text-base leading-6">
+          {pamphletHeader.subtitle}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* LEFT — controls */}
         <div className="lg:col-span-1 flex flex-col gap-6">
           <div className="p-6 bg-secondary-50 rounded-2xl shadow-sm outline outline-1 outline-offset-[-1px] outline-secondary-300 flex flex-col gap-4">
-            <span className="text-zinc-600 text-xs font-bold uppercase tracking-wide">Select Theme</span>
+            <span className="text-zinc-600 text-xs font-bold uppercase tracking-wide">
+              Select Theme
+            </span>
             <PamphletThemeSelector value={theme} onChange={setPamphletTheme} />
           </div>
 
           <div className="p-6 bg-secondary-50 rounded-2xl shadow-sm outline outline-1 outline-offset-[-1px] outline-secondary-300 flex flex-col gap-4">
-            <span className="text-zinc-600 text-xs font-bold uppercase tracking-wide">Branding Display</span>
+            <span className="text-zinc-600 text-xs font-bold uppercase tracking-wide">
+              Branding Display
+            </span>
             <SegmentedOptionControl
               name="branding"
               options={pamphletBrandingOptions}
@@ -75,23 +85,41 @@ export default function PamphletOverview({
 
           <div className="p-6 bg-secondary-50 rounded-2xl shadow-sm outline outline-1 outline-offset-[-1px] outline-secondary-300 flex flex-col gap-5">
             {(branding === "logo-only" || branding === "logo-name") && (
-              <PamphletSizeSlider label="Logo Size" value={logoSize} onChange={setPamphletLogoSize} basePx={56} />
+              <PamphletSizeSlider
+                label="Logo Size"
+                value={logoSize}
+                onChange={setPamphletLogoSize}
+                basePx={56}
+              />
             )}
-            <PamphletSizeSlider label="Heading Size" value={headingSize} onChange={setPamphletHeadingSize} basePx={48} />
+            <PamphletSizeSlider
+              label="Heading Size"
+              value={headingSize}
+              onChange={setPamphletHeadingSize}
+              basePx={48}
+            />
           </div>
 
           <div className="p-6 bg-secondary-50 rounded-2xl shadow-sm outline outline-1 outline-offset-[-1px] outline-secondary-300 flex flex-col gap-4">
-            <span className="text-zinc-600 text-xs font-bold uppercase tracking-wide">Theme Palette</span>
+            <span className="text-zinc-600 text-xs font-bold uppercase tracking-wide">
+              Theme Palette
+            </span>
             <PamphletColorPalette
               colors={currentColors}
-              onChange={(colorKey, value) => handlePamphletColorChange(theme, colorKey, value)}
+              onChange={(colorKey, value) =>
+                handlePamphletColorChange(theme, colorKey, value)
+              }
             />
           </div>
         </div>
 
         {/* RIGHT — live preview + actions */}
         <div className="lg:col-span-2 flex flex-col gap-6">
-          <PamphletActionsFooter onBack={onBack} onGenerateNew={handleGenerateNew} onConfirm={onBack} />
+          <PamphletActionsFooter
+            onBack={onBack}
+            onGenerateNew={handleGenerateNew}
+            onConfirm={onBack}
+          />
           <PamphletPreviewPanel
             theme={theme}
             job={formData}
@@ -102,8 +130,9 @@ export default function PamphletOverview({
             onFullscreen={() => setIsFullscreen(true)}
             onExport={handleExport}
             captureId={CAPTURE_ID}
+            organizationName={organization.name}
+            organizationLogoUrl={organization.logo}
           />
-          
         </div>
       </div>
 
@@ -115,7 +144,10 @@ export default function PamphletOverview({
           aria-label="Pamphlet fullscreen preview"
           onClick={() => setIsFullscreen(false)}
         >
-          <div className="max-w-full max-h-full overflow-auto rounded-xl shadow-2xl" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="max-w-full max-h-full overflow-auto rounded-xl shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <JobPamphletPreview
               theme={theme}
               job={formData}
@@ -123,6 +155,8 @@ export default function PamphletOverview({
               branding={branding}
               logoSize={logoSize}
               headingSize={headingSize}
+              organizationName={organization.name}
+              organizationLogoUrl={organization.logo}
             />
           </div>
         </div>

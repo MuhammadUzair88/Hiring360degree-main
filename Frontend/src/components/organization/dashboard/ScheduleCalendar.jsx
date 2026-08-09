@@ -35,6 +35,7 @@ function buildMonthGrid(year, monthIndex) {
 export default function ScheduleCalendar({
   selectedDay,
   onSelectDay,
+  onSelectDate,
   markedDays = [],
   initialYear = scheduleCalendarMonth.year,
   initialMonthIndex = scheduleCalendarMonth.monthIndex,
@@ -107,7 +108,12 @@ export default function ScheduleCalendar({
               key={index}
               type="button"
               disabled={!cell.isCurrentMonth}
-              onClick={() => onSelectDay?.(cell.day)}
+              onClick={() => {
+                onSelectDay?.(cell.day);
+                if (cell.isCurrentMonth) {
+                  onSelectDate?.(new Date(viewDate.getFullYear(), viewDate.getMonth(), cell.day));
+                }
+              }}
               className={`relative aspect-square min-w-0 flex items-center justify-center rounded-md sm:rounded-lg text-[11px] sm:text-xs font-semibold leading-none transition-colors ${
                 !cell.isCurrentMonth
                   ? "text-secondary-400 cursor-default"

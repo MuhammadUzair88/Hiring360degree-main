@@ -3,13 +3,9 @@ import { User, Mail, Phone, Loader2 } from "lucide-react";
 
 import Form from "./Form";
 import ResumeUploader from "./ResumeUploader";
-import { initialCandidateFormState, validators, submitCandidateApplication } from "./data";
+import { initialCandidateFormState, validators } from "./data";
 
-/**
- * The application fields themselves — name, email, phone, resume, submit.
- * Has no API dependency: it submits through `submitCandidateApplication`
- * (a mock from data.js) unless a real `onSubmit` function is passed in.
- */
+
 export default function CandidateFormStructure({ organizationId, onSuccess, onSubmit }) {
   const [form, setForm] = useState(initialCandidateFormState);
   const [errors, setErrors] = useState({});
@@ -45,7 +41,7 @@ export default function CandidateFormStructure({ organizationId, onSuccess, onSu
 
     try {
       setSubmitting(true);
-      const submitFn = onSubmit || submitCandidateApplication;
+      const submitFn = onSubmit 
       await submitFn({ ...form, organizationId });
       onSuccess?.();
     } catch (err) {

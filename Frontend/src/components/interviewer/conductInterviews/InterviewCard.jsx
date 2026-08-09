@@ -28,9 +28,9 @@ function formatDate(dateStr) {
 
 /**
  * One candidate dossier in the roster grid. The whole card is a link to
- * the interview detail route (`/interviewers/conduct/:scheduleId`); the
- * "Join" button on a live interview stops that navigation and opens the
- * meeting link instead.
+ * the interview detail route (`/interviewers/conduct-interviews/:scheduleId`);
+ * the "Join" button on a live interview stops that navigation and opens
+ * the meeting link instead.
  */
 export default function InterviewCard({ interview, onJoinInterview }) {
   const tone = getStatusTone(interview.statusBadge);
