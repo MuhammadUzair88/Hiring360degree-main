@@ -12,6 +12,7 @@ import { exportNodeAsPng, uploadDataUrlToCloudinary } from "../../../components/
 import advertisementService from "../../../services/advertisementService";
 import { extractErrorMessage } from "../../../services/apiClient";
 import { useToast } from "../../../context/ToastContext";
+import { useAuth } from "../../../context/AuthContext";
 
 const PUBLISH_CAPTURE_ID = "edit-campaign-capture";
 
@@ -36,6 +37,7 @@ export default function EditAdvertisement() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const {organization} = useAuth()
 
   const [job, setJob] = useState(undefined); // undefined = loading, null = not found
   const [formData, setFormData] = useState(null);
@@ -106,41 +108,6 @@ export default function EditAdvertisement() {
   const backTo = `/advertisement/job/${job._id}`;
   const currentPamphletColors = pamphletSettings.colors?.[pamphletSettings.theme] || {};
 
-  // const handlePublish = async () => {
-  //   setIsSubmitting(true);
-  //   setSubmitError("");
-  //   try {
-  //     let dataUrl = pamphletImageDataUrl;
-  //     if (isPamphletGenerated) {
-  //       try {
-  //         dataUrl = await exportNodeAsPng(PUBLISH_CAPTURE_ID);
-  //         setPamphletImageDataUrl(dataUrl);
-  //       } catch (captureError) {
-  //         console.warn("Could not regenerate the campaign image.", captureError);
-  //       }
-  //     }
-
-  //     const currentColors = pamphletSettings.colors?.[pamphletSettings.theme] || {};
-
-  //     await advertisementService.update(job._id, {
-  //       ...formData,
-  //       generatedImageUrl: dataUrl,
-  //       template: pamphletSettings.theme,
-  //       colors: currentColors,
-  //       brandingPreference: pamphletSettings.branding,
-  //       logoSize: pamphletSettings.logoSize,
-  //       headingSize: pamphletSettings.headingSize,
-  //     });
-
-  //     setShowSuccess(true);
-  //   } catch (error) {
-  //     const message = extractErrorMessage(error, "Could not update this job posting. Please try again.");
-  //     setSubmitError(message);
-  //     toast.error(message);
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
 
     const handlePublish = async () => {
     setIsSubmitting(true);
@@ -235,6 +202,8 @@ export default function EditAdvertisement() {
             branding={pamphletSettings.branding}
             logoSize={pamphletSettings.logoSize}
             headingSize={pamphletSettings.headingSize}
+             organizationName={organization?.name}
+            organizationLogoUrl={organization?.logo}
           />
         </div>
       </div>

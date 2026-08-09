@@ -1,26 +1,10 @@
 import { Users, Code2, UserCheck } from "lucide-react";
 
-/**
- * interviewer/data.js
- * ------------------------------------------------------------------
- * Single source of truth for copy, config, and seed data on the
- * Interviewer pages (list + add/edit form). Nothing in the component
- * files hardcodes copy — they all receive it as props, defaulted from
- * the matching export here. Swap `initialInterviewers` for a real API
- * response later (see interviewerStore.js) and no component needs to
- * change.
- * ------------------------------------------------------------------
- */
-
-
-
-
-
 // Organization info (shown on every page)
-export const organizationData = {
-  id: 1,
-  name: "Grainup",
-};
+// export const organizationData = {
+//   id: 1,
+//   name: "Grainup",
+// };
 
 // Each page now has its own label (used in the title) + subtitle (used below it)
 export const pageContent = {

@@ -1,18 +1,28 @@
+
+
 // src/services/chatService.js
-// Wraps /api/chat/* — Stream (video/chat) token issuance for the live
-// interview room. Public: anyone joining a call (candidate or interviewer)
-// needs a token before they have necessarily logged in to either portal.
+// Server-minted Stream credentials scoped to a real scheduled interview.
+// The browser never chooses the Stream user id.
 import apiClient from "./apiClient";
 
 const chatService = {
   /** POST /api/chat/stream-token */
-  getStreamToken: async ({ userId, userName }) => {
+  getStreamToken: async ({ callId, role }) => {
     const { data } = await apiClient.post(
       "/api/chat/stream-token",
-      { userId, userName },
-      { tokenRole: "public" }
+      { callId, role },
+      {
+        // Candidate joins from the emailed public link. Interviewer joins must
+        // carry the interviewer JWT so the backend can verify assignment.
+        tokenRole: role === "interviewer" ? "interviewer" : "public",
+      }
     );
-    return data; // { success, token }
+
+    return data;
+    // {
+    //   success, apiKey, videoToken, chatToken, user,
+    //   callId, scheduleId, applicationId, streamHostId, streamCandidateId
+    // }
   },
 };
 

@@ -1,10 +1,165 @@
+// // src/context/JobContext.jsx
+
+// import React, {
+//   createContext,
+//   useCallback,
+//   useContext,
+//   useEffect,
+//   useState,
+// } from "react";
+
+// import { useParams } from "react-router-dom";
+
+// import advertisementService from "../services/advertisementService";
+// import { extractErrorMessage } from "../services/apiClient";
+
+// const JobContext = createContext(null);
+
+// export function JobProvider({ children }) {
+//   const { id } = useParams();
+
+//   // undefined = loading
+//   // null      = not found
+//   const [job, setJob] = useState(undefined);
+
+//   const [pamphlet, setPamphlet] = useState(null);
+
+//   const [applicantCount, setApplicantCount] =
+//     useState(0);
+
+//   const [error, setError] = useState(null);
+
+//   const fetchJob = useCallback(async () => {
+//     if (!id) {
+//       setJob(null);
+//       setPamphlet(null);
+//       setApplicantCount(0);
+//       return;
+//     }
+
+//     setJob(undefined);
+//     setError(null);
+
+//     try {
+//       const data =
+//         await advertisementService.getById(id);
+
+//       const advertisement =
+//         data?.advertisement || null;
+
+//       setJob(advertisement);
+
+//       setPamphlet(
+//         data?.pamphlet || null
+//       );
+
+//       setApplicantCount(
+//         Number(
+//           data?.applicantsCount ??
+//             advertisement?.applicantsCount ??
+//             0
+//         ) || 0
+//       );
+//     } catch (err) {
+//       console.error(
+//         "Failed to load job:",
+//         err
+//       );
+
+//       setJob(null);
+//       setPamphlet(null);
+//       setApplicantCount(0);
+
+//       setError(
+//         extractErrorMessage(
+//           err,
+//           "Failed to load this job posting."
+//         )
+//       );
+//     }
+//   }, [id]);
+
+//   useEffect(() => {
+//     fetchJob();
+//   }, [fetchJob]);
+
+//   const updateJobLocal = useCallback(
+//     (patch) => {
+//       setJob((current) =>
+//         current
+//           ? {
+//               ...current,
+//               ...patch,
+//             }
+//           : current
+//       );
+//     },
+//     []
+//   );
+
+//   /**
+//    * Useful when Candidate Intake changes status or
+//    * when an application is added/removed.
+//    */
+//   const updateApplicantCount = useCallback(
+//     (count) => {
+//       const nextCount =
+//         Math.max(0, Number(count) || 0);
+
+//       setApplicantCount(nextCount);
+
+//       setJob((current) =>
+//         current
+//           ? {
+//               ...current,
+//               applicantsCount: nextCount,
+//             }
+//           : current
+//       );
+//     },
+//     []
+//   );
+
+//   return (
+//     <JobContext.Provider
+//       value={{
+//         jobId: id,
+
+//         job,
+//         pamphlet,
+
+//         // REAL applicant count
+//         applicantCount,
+
+//         error,
+//         isLoading: job === undefined,
+
+//         refetchJob: fetchJob,
+//         updateJobLocal,
+//         updateApplicantCount,
+//       }}
+//     >
+//       {children}
+//     </JobContext.Provider>
+//   );
+// }
+
+// export function useJob() {
+//   const context =
+//     useContext(JobContext);
+
+//   if (!context) {
+//     throw new Error(
+//       "useJob must be used within a JobProvider"
+//     );
+//   }
+
+//   return context;
+// }
+
+
+
 // src/context/JobContext.jsx
-//
-// Every route nested under SecondaryLayout ("/advertisement/job/:id/...")
-// deals with the same job. Rather than have JobOverview, Rounds,
-// CandidateIntake, OfferLetter, and SecondarySidebar each fetch the
-// advertisement independently, SecondaryLayout mounts this provider once
-// per :id and everything below reads from it via useJob().
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import advertisementService from "../services/advertisementService";
@@ -13,25 +168,36 @@ import { extractErrorMessage } from "../services/apiClient";
 const JobContext = createContext(null);
 
 export function JobProvider({ children }) {
-  const { id } = useParams();
-  const [job, setJob] = useState(undefined); // undefined = loading, null = not found
+  const params = useParams();
+  const jobId = params.id || params.jobId || null;
+  const [job, setJob] = useState(undefined);
   const [pamphlet, setPamphlet] = useState(null);
+  const [applicantCount, setApplicantCount] = useState(0);
   const [error, setError] = useState(null);
 
   const fetchJob = useCallback(async () => {
-    if (!id) return;
+    if (!jobId) {
+      setJob(null);
+      setPamphlet(null);
+      setApplicantCount(0);
+      return;
+    }
+
     setJob(undefined);
     setError(null);
     try {
-      const data = await advertisementService.getById(id);
-         console.log(data)
-      setJob(data.advertisement || null);
-      setPamphlet(data.pamphlet || null);
+      const data = await advertisementService.getById(jobId);
+      const advertisement = data?.advertisement || null;
+      setJob(advertisement);
+      setPamphlet(data?.pamphlet || null);
+      setApplicantCount(Number(data?.applicantsCount ?? advertisement?.applicantsCount ?? 0) || 0);
     } catch (err) {
       setJob(null);
+      setPamphlet(null);
+      setApplicantCount(0);
       setError(extractErrorMessage(err, "Failed to load this job posting."));
     }
-  }, [id]);
+  }, [jobId]);
 
   useEffect(() => {
     fetchJob();
@@ -41,10 +207,24 @@ export function JobProvider({ children }) {
     setJob((current) => (current ? { ...current, ...patch } : current));
   }, []);
 
+  const updateApplicantCount = useCallback((count) => {
+    const next = Math.max(0, Number(count) || 0);
+    setApplicantCount(next);
+    setJob((current) => current ? { ...current, applicantsCount: next } : current);
+  }, []);
+
   return (
-    <JobContext.Provider
-      value={{ jobId: id, job, pamphlet, error, isLoading: job === undefined, refetchJob: fetchJob, updateJobLocal }}
-    >
+    <JobContext.Provider value={{
+      jobId,
+      job,
+      pamphlet,
+      applicantCount,
+      error,
+      isLoading: job === undefined,
+      refetchJob: fetchJob,
+      updateJobLocal,
+      updateApplicantCount,
+    }}>
       {children}
     </JobContext.Provider>
   );
@@ -52,8 +232,6 @@ export function JobProvider({ children }) {
 
 export function useJob() {
   const context = useContext(JobContext);
-  if (!context) {
-    throw new Error("useJob must be used within a JobProvider");
-  }
+  if (!context) throw new Error("useJob must be used within a JobProvider");
   return context;
 }

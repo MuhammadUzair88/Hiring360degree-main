@@ -1,12 +1,4 @@
-// src/services/apiClient.js
-//
-// Centralized Axios instance. Every service module in `src/services` goes
-// through this client instead of calling axios/fetch directly, so that:
-//   - the backend base URL lives in one place (env driven)
-//   - auth tokens are attached automatically based on which "role" an
-//     endpoint belongs to (organization vs interviewer vs public)
-//   - errors are normalized into a single shape before they reach UI code
-//
+
 import axios from "axios";
 import { STORAGE_KEYS } from "../utils/constants";
 
@@ -81,7 +73,12 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       window.dispatchEvent(
         new CustomEvent("auth:unauthorized", {
-          detail: { url: error.config?.url },
+          detail: {
+            url: error.config?.url || "",
+            tokenRole:
+              error.config?.tokenRole ||
+              resolveTokenRole(error.config?.url || ""),
+          },
         })
       );
     }

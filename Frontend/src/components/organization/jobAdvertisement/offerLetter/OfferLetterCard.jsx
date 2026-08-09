@@ -1,7 +1,7 @@
 import React from "react";
 import { Edit3, Pencil, UserPlus, Users } from "lucide-react";
 import A4Preview from "./A4Preview";
-import { formatShortDate } from "./offerDateUtils";
+import { formatShortDate, getTodayDateInput } from "./offerDateUtils";
 
 export default function OfferLetterCard({
   candidate,
@@ -9,7 +9,6 @@ export default function OfferLetterCard({
   advertisement = {},
   design,
   signature,
-  offerValidityDays,
   totalCandidates = 0,
   onCustomize,
   onEdit,
@@ -66,11 +65,10 @@ export default function OfferLetterCard({
             signatureSize={design?.signatureSize}
             spacing={design?.spacing}
             formData={{
-              joiningDate: candidate?.joiningDate || new Date().toISOString().split("T")[0],
+              joiningDate: candidate?.joiningDate || getTodayDateInput(),
               endingDate: candidate?.endingDate || "",
             }}
             signature={signature}
-            offerValidityDays={offerValidityDays}
             customContent={candidate?.offerContent || null}
           />
         </div>

@@ -2,257 +2,337 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getOfferedCandidatesByJobId,
+  getOfferLetterByApplicationId,
   getOfferLetterSettings,
   saveOfferLetterSettings,
   notifyCandidate,
   selectCandidatesWithOffers,
   buildOfferSnapshot,
   DEFAULT_OFFER_DESIGN,
-  DEFAULT_OFFER_VALIDITY_DAYS,
 } from "./data";
-import { DEFAULT_OFFER_COLORS } from "./Theme";
+import { resolveOfferPalette } from "./Theme";
 import { useToast } from "../../../../context/ToastContext";
 import { extractErrorMessage } from "../../../../services/apiClient";
 
-/**
- * Main state hook for the Offer Letter system. Every property/action
- * OfferLetterOverview.jsx reads off `offerLetter.*` is returned here —
- * if you add a new button/card that needs hook state, add it here
- * first, then wire the component to it.
- */
+function makeDefaultDesign(theme = DEFAULT_OFFER_DESIGN.theme) {
+  return {
+    ...DEFAULT_OFFER_DESIGN,
+    theme,
+    colors: resolveOfferPalette(null, theme),
+  };
+}
+
 export function useOfferLetterLogic(jobId) {
   const navigate = useNavigate();
   const toast = useToast();
 
-  // ─── Core state ─────────────────────────────────────────────
   const [candidates, setCandidates] = useState([]);
   const [selectedCandidateId, setSelectedCandidateId] = useState(null);
-  const [design, setDesign] = useState(DEFAULT_OFFER_DESIGN);
+  const [design, setDesign] = useState(() => makeDefaultDesign());
   const [signature, setSignature] = useState(null);
-  const [offerValidityDays, setOfferValidityDays] = useState(DEFAULT_OFFER_VALIDITY_DAYS);
   const [isConfigured, setIsConfigured] = useState(false);
-  const [step, setStep] = useState("dashboard"); // "dashboard" | "studio"
+  const [step, setStep] = useState("dashboard");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // ─── Notify state ───────────────────────────────────────────
   const [notifyingId, setNotifyingId] = useState(null);
   const [notifyTab, setNotifyTab] = useState("pending");
-
-  // ─── Preview modal state ────────────────────────────────────
   const [previewApplicationId, setPreviewApplicationId] = useState(null);
 
-  // ─── Load candidates + saved settings ──────────────────────
   const loadData = useCallback(async () => {
-    if (!jobId) return;
+    if (!jobId) {
+      setCandidates([]);
+      setSelectedCandidateId(null);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const fetchedCandidates = await getOfferedCandidatesByJobId(jobId);
-      setCandidates(fetchedCandidates);
-      setSelectedCandidateId((prev) => prev || fetchedCandidates[0]?.applicationId || null);
+      const [fetchedCandidates, settings] = await Promise.all([
+        getOfferedCandidatesByJobId(jobId),
+        getOfferLetterSettings(jobId),
+      ]);
 
-      const settings = await getOfferLetterSettings(jobId);
+      setCandidates(fetchedCandidates);
+      setSelectedCandidateId((previous) => {
+        const stillExists = fetchedCandidates.some(
+          (candidate) => String(candidate.applicationId) === String(previous)
+        );
+        return stillExists ? previous : fetchedCandidates[0]?.applicationId || null;
+      });
+
       if (settings) {
+        const theme = settings.template || DEFAULT_OFFER_DESIGN.theme;
         setDesign({
-          theme: settings.template || DEFAULT_OFFER_DESIGN.theme,
-          colors: settings.colors || DEFAULT_OFFER_COLORS,
-          brandingPreference: settings.brandingPreference || DEFAULT_OFFER_DESIGN.brandingPreference,
-          logoSize: settings.logoSize || DEFAULT_OFFER_DESIGN.logoSize,
-          headingSize: settings.headingSize || DEFAULT_OFFER_DESIGN.headingSize,
-          bodyFontSize: settings.bodyFontSize || DEFAULT_OFFER_DESIGN.bodyFontSize,
-          signatureSize: settings.signatureSize || DEFAULT_OFFER_DESIGN.signatureSize,
-          spacing: settings.spacing || DEFAULT_OFFER_DESIGN.spacing,
+          ...makeDefaultDesign(theme),
+          theme,
+          colors: resolveOfferPalette(settings.colors, theme),
+          brandingPreference:
+            settings.brandingPreference || DEFAULT_OFFER_DESIGN.brandingPreference,
+          logoSize: settings.logoSize ?? DEFAULT_OFFER_DESIGN.logoSize,
+          headingSize: settings.headingSize ?? DEFAULT_OFFER_DESIGN.headingSize,
+          bodyFontSize:
+            settings.bodyFontSize ?? DEFAULT_OFFER_DESIGN.bodyFontSize,
+          signatureSize:
+            settings.signatureSize ?? DEFAULT_OFFER_DESIGN.signatureSize,
+          spacing: settings.spacing ?? DEFAULT_OFFER_DESIGN.spacing,
         });
         setSignature(settings.signature || null);
-        setOfferValidityDays(settings.offerValidityDays || DEFAULT_OFFER_VALIDITY_DAYS);
         setIsConfigured(Boolean(settings.signature?.url));
       } else {
+        setDesign(makeDefaultDesign());
+        setSignature(null);
         setIsConfigured(false);
       }
     } catch (err) {
-      setError(extractErrorMessage(err, "Failed to load offer letter data"));
+      setError(extractErrorMessage(err, "Failed to load offer letter data."));
     } finally {
       setIsLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Persists the current design/signature/validity to storage. Called
-  // whenever the studio closes or a setting changes "live".
   const persistSettings = useCallback(
     async (patch = {}) => {
-      if (!jobId) return;
-      const ok = await saveOfferLetterSettings(jobId, {
-        template: design.theme,
-        colors: design.colors,
-        brandingPreference: design.brandingPreference,
-        logoSize: design.logoSize,
-        headingSize: design.headingSize,
-        bodyFontSize: design.bodyFontSize,
-        signatureSize: design.signatureSize,
-        spacing: design.spacing,
-        signature,
-        offerValidityDays,
-        ...patch,
-      });
-      if (!ok) toast.error("Failed to save your offer letter settings. Please try again.");
+      if (!jobId) return null;
+
+      const patchedTheme = patch.template || patch.theme || design.theme;
+      const patchedColors = resolveOfferPalette(
+        patch.colors ?? design.colors,
+        patchedTheme
+      );
+
+      try {
+        return await saveOfferLetterSettings(jobId, {
+          template: patchedTheme,
+          colors: patchedColors,
+          brandingPreference:
+            patch.brandingPreference ?? design.brandingPreference,
+          logoSize: patch.logoSize ?? design.logoSize,
+          headingSize: patch.headingSize ?? design.headingSize,
+          bodyFontSize: patch.bodyFontSize ?? design.bodyFontSize,
+          signatureSize: patch.signatureSize ?? design.signatureSize,
+          spacing: patch.spacing ?? design.spacing,
+          signature: Object.prototype.hasOwnProperty.call(patch, "signature")
+            ? patch.signature
+            : signature,
+        });
+      } catch (err) {
+        const message = extractErrorMessage(
+          err,
+          "Failed to save your offer letter settings."
+        );
+        toast.error(message);
+        throw err;
+      }
     },
-    [jobId, design, signature, offerValidityDays, toast]
+    [jobId, design, signature, toast]
   );
 
-  // ─── First-time setup ───────────────────────────────────────
   const finalizeSetup = useCallback(
-    async (signatureData, validityDays = DEFAULT_OFFER_VALIDITY_DAYS) => {
-      setSignature(signatureData);
-      setOfferValidityDays(validityDays);
-      await persistSettings({ signature: signatureData, offerValidityDays: validityDays });
-      setIsConfigured(true);
+    async (signatureData) => {
+      const saved = await persistSettings({ signature: signatureData });
+      const nextSignature = saved?.signature || signatureData || null;
+      setSignature(nextSignature);
+      setIsConfigured(Boolean(nextSignature?.url));
     },
     [persistSettings]
   );
 
-  // ─── Studio (design + signature) ────────────────────────────
   const openStudio = useCallback(() => setStep("studio"), []);
 
-  // Design changes apply live; "closing" the studio just persists
-  // whatever's currently in state and returns to the dashboard.
   const closeStudio = useCallback(async () => {
-    await persistSettings();
-    setStep("dashboard");
+    try {
+      await persistSettings();
+      setStep("dashboard");
+    } catch {
+      // persistSettings already displays the error.
+    }
   }, [persistSettings]);
 
   const updateDesign = useCallback((patch) => {
-    setDesign((prev) => ({ ...prev, ...patch }));
+    setDesign((previous) => {
+      const nextTheme = patch.theme || previous.theme;
+      const themeChanged = patch.theme && patch.theme !== previous.theme;
+      const colors = themeChanged
+        ? resolveOfferPalette(patch.colors, nextTheme)
+        : resolveOfferPalette(patch.colors ?? previous.colors, nextTheme);
+
+      return {
+        ...previous,
+        ...patch,
+        theme: nextTheme,
+        colors,
+      };
+    });
   }, []);
 
   const resetDesignColors = useCallback((themeKey) => {
-    setDesign((prev) => ({
-      ...prev,
-      colors: { ...prev.colors, [themeKey]: { ...DEFAULT_OFFER_COLORS[themeKey] } },
+    setDesign((previous) => ({
+      ...previous,
+      colors: resolveOfferPalette(null, themeKey || previous.theme),
     }));
   }, []);
 
   const saveSignature = useCallback(
     async (newSignature) => {
-      setSignature(newSignature);
-      await persistSettings({ signature: newSignature });
+      const saved = await persistSettings({ signature: newSignature });
+      const nextSignature = saved?.signature || newSignature || null;
+      setSignature(nextSignature);
+      setIsConfigured(Boolean(nextSignature?.url));
     },
     [persistSettings]
   );
 
-  // ─── Candidate selection ─────────────────────────────────────
   const selectCandidate = useCallback((applicationId) => {
     setSelectedCandidateId(applicationId);
   }, []);
 
   const activeCandidate = useMemo(
-    () => candidates.find((c) => c.applicationId === selectedCandidateId) || null,
+    () =>
+      candidates.find(
+        (candidate) =>
+          String(candidate.applicationId) === String(selectedCandidateId)
+      ) || null,
     [candidates, selectedCandidateId]
   );
 
-  // ─── Editor (standalone route) ──────────────────────────────
-  // "Create Offer" / "Generate" / "Edit" all push to the standalone
-  // Edit Offer Letter page rather than toggling local state. Adjust
-  // this path if EditOfferLetter.jsx is mounted at a different route.
   const openEditor = useCallback(
     (applicationId) => {
+      if (!applicationId || !jobId) return;
       navigate(`/advertisement/job/${jobId}/offer-letter/${applicationId}/edit`);
     },
     [navigate, jobId]
   );
 
-  // ─── Notify ──────────────────────────────────────────────────
-  const candidatesWithOffers = useMemo(() => selectCandidatesWithOffers(candidates), [candidates]);
+  const candidatesWithOffers = useMemo(
+    () => selectCandidatesWithOffers(candidates),
+    [candidates]
+  );
 
-  const triggerNotify = useCallback(async (applicationId, offerLetterImageUrl) => {
-    setNotifyingId(applicationId);
-    setError(null);
-    try {
-      const result = await notifyCandidate(applicationId, offerLetterImageUrl);
-      if (result.success) {
-        setCandidates((prev) =>
-          prev.map((c) =>
-            c.applicationId === applicationId
-              ? { ...c, notified: true, status: "Notified", notifiedAt: result.notifiedAt }
-              : c
+  /**
+   * Re-fetch the individual offer before notification so a stale candidate-list
+   * response can never incorrectly produce "Save Offer First".
+   */
+  const triggerNotify = useCallback(
+    async (applicationId) => {
+      if (!applicationId) return;
+
+      setNotifyingId(applicationId);
+      setError(null);
+
+      try {
+        const freshOffer = await getOfferLetterByApplicationId(applicationId);
+
+        if (!freshOffer) {
+          throw new Error("Create and save the candidate's offer letter first.");
+        }
+
+        if (!freshOffer.offerLetterUrl) {
+          throw new Error(
+            "The saved offer does not have its email attachment yet. Open Edit Offer and save the current letter once."
+          );
+        }
+
+        const result = await notifyCandidate(
+          applicationId,
+          freshOffer.offerLetterUrl
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || "Failed to notify candidate.");
+        }
+
+        const returnedUrl =
+          result.offerLetter?.offerLetterUrl || freshOffer.offerLetterUrl;
+
+        setCandidates((previous) =>
+          previous.map((candidate) =>
+            String(candidate.applicationId) === String(applicationId)
+              ? {
+                  ...candidate,
+                  notified: true,
+                  status: "Notified",
+                  notifiedAt: result.notifiedAt,
+                  offerLetterUrl: returnedUrl,
+                  hasDocument: Boolean(returnedUrl),
+                }
+              : candidate
           )
         );
-      } else {
-        setError(result.error || "Failed to notify candidate.");
-        toast.error(result.error || "Failed to notify candidate.");
-      }
-    } catch (err) {
-      const message = extractErrorMessage(err, "Failed to notify candidate.");
-      setError(message);
-      toast.error(message);
-    } finally {
-      setNotifyingId(null);
-    }
-  }, [toast]);
 
-  // ─── Preview modal ───────────────────────────────────────────
-  const openPreview = useCallback((applicationId) => setPreviewApplicationId(applicationId), []);
+        toast.success("Candidate notified successfully.");
+      } catch (err) {
+        const message = extractErrorMessage(err, "Failed to notify candidate.");
+        setError(message);
+        toast.error(message);
+      } finally {
+        setNotifyingId(null);
+      }
+    },
+    [toast]
+  );
+
+  const openPreview = useCallback(
+    (applicationId) => setPreviewApplicationId(applicationId),
+    []
+  );
+
   const closePreview = useCallback(() => setPreviewApplicationId(null), []);
 
   const previewCandidate = useMemo(
-    () => candidates.find((c) => c.applicationId === previewApplicationId) || null,
+    () =>
+      candidates.find(
+        (candidate) =>
+          String(candidate.applicationId) === String(previewApplicationId)
+      ) || null,
     [candidates, previewApplicationId]
   );
 
   const getOfferForCandidate = useCallback(
-    (applicationId) => buildOfferSnapshot(candidates.find((c) => c.applicationId === applicationId)),
+    (applicationId) =>
+      buildOfferSnapshot(
+        candidates.find(
+          (candidate) => String(candidate.applicationId) === String(applicationId)
+        )
+      ),
     [candidates]
   );
 
   return {
-    // Loading / config
     isLoading,
     error,
     isConfigured,
     finalizeSetup,
-
-    // Navigation
     step,
     setStep,
     openStudio,
     closeStudio,
     openEditor,
-
-    // Candidates
     candidates,
     selectedCandidateId,
     selectCandidate,
     activeCandidate,
     candidatesWithOffers,
-
-    // Design + signature
     design,
     updateDesign,
     resetDesignColors,
     signature,
     saveSignature,
-    offerValidityDays,
-
-    // Notify
     notifyingId,
     notifyTab,
     setNotifyTab,
     triggerNotify,
-
-    // Preview
     previewApplicationId,
     previewCandidate,
     openPreview,
     closePreview,
     getOfferForCandidate,
-
-    // Manual refresh (e.g. after returning from the edit page)
     loadData,
   };
 }

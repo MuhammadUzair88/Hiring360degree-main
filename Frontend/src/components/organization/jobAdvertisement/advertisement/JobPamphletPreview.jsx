@@ -29,17 +29,7 @@ function buildMetaItems(job, employmentTypeDisplay, compensationDisplay) {
   ].filter(Boolean);
 }
 
-/**
- * Renders the pamphlet artwork at a fixed 1200x630 — the standard
- * social link-preview size — so what you see in the scaled-down
- * on-screen preview is exactly what gets exported. Scaling for
- * display is the caller's job (see PamphletPreviewPanel); this
- * component always renders at real size.
- *
- * `job` is expected to be the same shape as initialAdvertisementForm
- * in createadvertisementdata.js — no remapping needed between the
- * form and the pamphlet.
- */
+
 export default function JobPamphletPreview({
   theme = "corporate",
   job = {},

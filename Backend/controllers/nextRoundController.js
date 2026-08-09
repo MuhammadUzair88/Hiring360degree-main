@@ -1,4 +1,3 @@
-
 import { Application } from "../models/applicationModel.js";
 import { ScheduledInterview } from "../models/interviewModel.js";
 import { InterviewPipeline } from "../models/interviewPipelineModel.js";
@@ -150,14 +149,35 @@ export const getRoundCandidates = async (req, res) => {
       .populate({ path: "candidateId", select: "name email phone" })
       .sort({ createdAt: -1 });
 
+    // Do not return candidates who already have a live schedule for this
+    // same round. Cancelled schedules are intentionally ignored so the
+    // candidate becomes schedulable again.
+    const applicationIds = applications.map((app) => app._id);
+    const activeSchedules = await ScheduledInterview.find({
+      applicationId: { $in: applicationIds },
+      roundIndex: roundIdx,
+      status: { $ne: "Cancelled" },
+    })
+      .select("applicationId")
+      .lean();
+
+    const scheduledApplicationIds = new Set(
+      activeSchedules.map((schedule) => schedule.applicationId.toString())
+    );
+
     const candidates = applications
-      .filter(app => app.candidateId)
+      .filter(
+        (app) =>
+          app.candidateId &&
+          !scheduledApplicationIds.has(app._id.toString())
+      )
       .map(app => ({
         id: app.candidateId._id,
         applicationId: app._id,
         name: app.candidateId.name,
         email: app.candidateId.email,
         phone: app.candidateId.phone,
+        matchScore: app.aiResult?.overallScore ?? app.aiResult?.totalMatchScore ?? null,
         currentRound: app.currentRound,
         status: app.status,
       }));

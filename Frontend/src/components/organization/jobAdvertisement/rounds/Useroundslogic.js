@@ -16,11 +16,13 @@ function mapInterviewer(iv) {
 
 function mapRoundCandidate(candidate) {
   return {
-    id: candidate.id, // candidate's own id (used as React key / outcome key)
-    applicationId: candidate.applicationId, // what scheduling actually needs
+    id: candidate.id,
+    candidateId: candidate.id,
+    applicationId: candidate.applicationId,
     name: candidate.name,
     email: candidate.email,
     phone: candidate.phone,
+    matchScore: candidate.matchScore,
   };
 }
 

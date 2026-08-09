@@ -104,6 +104,7 @@ export default function SettingsOverview() {
       <PageHeader
         pageLabel={pageContent.settings.label}
         subtitle={pageContent.settings.subtitle}
+        organization={organization}
       />
       <OrganizationProfileCard
         title={organizationProfile.title}

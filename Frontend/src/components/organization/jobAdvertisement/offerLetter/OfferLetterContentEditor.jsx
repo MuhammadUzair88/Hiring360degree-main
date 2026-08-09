@@ -1,11 +1,41 @@
 import React, { useEffect, useState } from "react";
 import { Save, ArrowLeft, CalendarDays, RefreshCw, Sparkles, Users, CheckSquare, Square, Plus, Trash2, ListPlus, Loader2 } from "lucide-react";
 import A4Preview from "./A4Preview";
-import { calculateEndingDate, requiresEndingDate } from "./offerDateUtils";
+import OfferLetterPreview from "./OfferLetterPreview";
+import {
+  calculateEndingDate,
+  requiresEndingDate,
+  getTodayDateInput,
+  exportNodeAsPng,
+  uploadDataUrlToCloudinary,
+} from "./offerDateUtils";
 import { buildDefaultOfferContent, classifyEmploymentType, JOB_KIND_LABELS } from "./OfferLetterContent";
+
+const EDITOR_CAPTURE_ID = "offer-letter-editor-capture";
 
 function generateLocalFieldId() {
   return `local_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function normalizeAdditionalFields(fields = []) {
+  const usedIds = new Set();
+
+  return (Array.isArray(fields) ? fields : []).map((field) => {
+    let id = String(field?.id || "").trim();
+
+    if (!id || usedIds.has(id)) {
+      id = generateLocalFieldId();
+    }
+
+    usedIds.add(id);
+
+    return {
+      ...field,
+      id,
+      label: field?.label || "",
+      value: field?.value || "",
+    };
+  });
 }
 
 function buildCompanyContext({ organization, advertisement, candidate, joiningDate, endingDate }) {
@@ -36,7 +66,6 @@ export default function OfferLetterContentEditor({
   advertisement,
   design,
   signature,
-  offerValidityDays,
   initialJoiningDate = "",
   initialEndingDate = "",
   initialOfferContent = null,
@@ -57,11 +86,14 @@ export default function OfferLetterContentEditor({
   const [paragraph2, setParagraph2] = useState(initialOfferContent?.paragraph2 || "");
   const [paragraph3, setParagraph3] = useState(initialOfferContent?.paragraph3 || "");
   const [fieldsSectionLabel, setFieldsSectionLabel] = useState(initialOfferContent?.fieldsSectionLabel || "");
-  const [additionalFields, setAdditionalFields] = useState(Array.isArray(initialOfferContent?.additionalFields) ? initialOfferContent.additionalFields : []);
+  const [additionalFields, setAdditionalFields] = useState(() =>
+    normalizeAdditionalFields(initialOfferContent?.additionalFields)
+  );
 
   const [bulkOpen, setBulkOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const computeDefaults = (jd, ed) => {
     const company = buildCompanyContext({ organization, advertisement, candidate, joiningDate: jd, endingDate: ed });
@@ -76,7 +108,7 @@ export default function OfferLetterContentEditor({
       setParagraph2(d.paragraph2);
       setParagraph3(d.paragraph3);
       setFieldsSectionLabel(d.fieldsSectionLabel);
-      setAdditionalFields(d.additionalFields);
+      setAdditionalFields(normalizeAdditionalFields(d.additionalFields));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -99,7 +131,7 @@ export default function OfferLetterContentEditor({
     setParagraph2(d.paragraph2);
     setParagraph3(d.paragraph3);
     setFieldsSectionLabel(d.fieldsSectionLabel);
-    setAdditionalFields(d.additionalFields);
+    setAdditionalFields(normalizeAdditionalFields(d.additionalFields));
   };
 
   const addField = () => setAdditionalFields((prev) => [...prev, { id: generateLocalFieldId(), label: "", value: "" }]);
@@ -114,10 +146,32 @@ export default function OfferLetterContentEditor({
   const liveCustomContent = { paragraph1, paragraph2, paragraph3, fieldsSectionLabel: fieldsSectionLabel || undefined, additionalFields: cleanedFields };
 
   const handleSave = async () => {
-    if (!isValid) return;
+    if (!isValid || isSaving) return;
+
     setIsSaving(true);
+    setSaveError("");
+
     try {
-      await onSave(candidate.applicationId, { joiningDate, endingDate: showEndingDate ? endingDate : "", offerContent: liveCustomContent }, bulkOpen ? selectedIds : []);
+      const dataUrl = await exportNodeAsPng(EDITOR_CAPTURE_ID, { scale: 2 });
+      const offerLetterImageUrl = await uploadDataUrlToCloudinary(dataUrl);
+
+      if (!offerLetterImageUrl) {
+        throw new Error("The offer letter image could not be uploaded.");
+      }
+
+      await onSave(
+        candidate.applicationId,
+        {
+          joiningDate,
+          endingDate: showEndingDate ? endingDate : "",
+          offerContent: liveCustomContent,
+          offerLetterImageUrl,
+        },
+        bulkOpen ? selectedIds : []
+      );
+    } catch (error) {
+      console.error("Offer letter save failed:", error);
+      setSaveError(error?.message || "Could not generate and save the offer letter.");
     } finally {
       setIsSaving(false);
     }
@@ -154,6 +208,12 @@ export default function OfferLetterContentEditor({
         </button>
       </div>
 
+      {saveError && (
+        <div className="px-4 py-3 rounded-xl bg-danger-50 outline outline-1 outline-offset-[-1px] outline-danger-200 text-danger-700 text-sm">
+          {saveError}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         <div className="xl:col-span-1 xl:order-2 flex flex-col gap-6">
           <div className="p-6 bg-secondary-50 rounded-2xl shadow-sm outline outline-1 outline-offset-[-1px] outline-secondary-300 flex flex-col gap-2 text-xs">
@@ -179,7 +239,7 @@ export default function OfferLetterContentEditor({
                 type="date"
                 value={joiningDate}
                 onChange={(e) => setJoiningDate(e.target.value)}
-                min={new Date().toISOString().split("T")[0]}
+                min={getTodayDateInput()}
                 className="px-4 py-2.5 bg-secondary-100 rounded-lg outline outline-1 outline-offset-[-1px] outline-secondary-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-300 transition-colors"
               />
             </div>
@@ -212,11 +272,6 @@ export default function OfferLetterContentEditor({
               </p>
             )}
 
-            {offerValidityDays ? (
-              <p className="text-gray-500 text-xs bg-primary-800/5 rounded-lg px-3 py-2.5">
-                This letter will note the candidate has <strong className="text-primary-800">{offerValidityDays} day{offerValidityDays === 1 ? "" : "s"}</strong> to accept, counted from the letter date.
-              </p>
-            ) : null}
           </div>
 
           {otherCandidates.length > 0 && (
@@ -275,7 +330,6 @@ export default function OfferLetterContentEditor({
                 spacing={design?.spacing}
                 formData={liveFormData}
                 signature={signature}
-                offerValidityDays={offerValidityDays}
                 customContent={liveCustomContent}
                 maxScale={1}
               />
@@ -369,6 +423,29 @@ export default function OfferLetterContentEditor({
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Full-resolution export source. This is intentionally separate from the
+          scaled visual preview so Cloudinary receives a crisp A4 image. */}
+      <div style={{ position: "fixed", left: "-10000px", top: 0, width: 794, height: 1123, pointerEvents: "none" }} aria-hidden="true">
+        <div id={EDITOR_CAPTURE_ID} style={{ width: 794, height: 1123, background: "#fff" }}>
+          <OfferLetterPreview
+            theme={design?.theme}
+            candidate={{ name: candidateDisplayName, email: candidateDisplayEmail, position: candidate?.position || advertisement?.jobTitle, applicationId: candidate?.applicationId }}
+            organization={organization}
+            advertisement={advertisement}
+            colors={design?.colors}
+            brandingPreference={design?.brandingPreference}
+            logoSize={design?.logoSize}
+            headingSize={design?.headingSize}
+            bodyFontSize={design?.bodyFontSize}
+            signatureSize={design?.signatureSize}
+            spacing={design?.spacing}
+            formData={liveFormData}
+            signature={signature}
+            customContent={liveCustomContent}
+          />
         </div>
       </div>
     </div>

@@ -1,9 +1,7 @@
+
+
 // src/utils/uploadImage.js
-//
-// Thin wrapper around Cloudinary's unsigned upload endpoint. Used
-// anywhere the app needs to turn a local file into a public URL before
-// sending it to the backend (organization logo at signup, logo changes
-// in Settings, etc). Centralized here instead of duplicated per-page.
+// Centralized Cloudinary unsigned image uploader.
 export async function uploadImageToCloudinary(file) {
   const uploadData = new FormData();
   uploadData.append("file", file);
@@ -15,10 +13,19 @@ export async function uploadImageToCloudinary(file) {
     body: uploadData,
   });
 
-  if (!response.ok) throw new Error("Image upload failed.");
+  if (!response.ok) {
+    let message = "Image upload failed.";
+    try {
+      const body = await response.json();
+      message = body?.error?.message || body?.message || message;
+    } catch {
+      // Keep the generic message when Cloudinary does not return JSON.
+    }
+    throw new Error(message);
+  }
 
   const uploaded = await response.json();
-  if (!uploaded.secure_url) throw new Error("Image upload failed.");
+  if (!uploaded?.secure_url) throw new Error("Image upload failed.");
 
   return uploaded.secure_url;
 }

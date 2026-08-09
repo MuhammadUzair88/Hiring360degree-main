@@ -1,4 +1,3 @@
-// middlewares/email-middleware.js
 
 import { candidateInterviewTemplate, interviewerInterviewTemplate, offerLetterTemplate } from "../utils/templates/emailTemplate.js";
 import { transporter } from "./email-config-middleware.js";
@@ -195,239 +194,198 @@ export const sendOfferLetterEmail = async ({
   supportEmail,
   offerLetterImageUrl,
 }) => {
-  try {
-    console.log("📧 Sending offer letter email to:", candidateEmail);
-    console.log("📧 Image URL:", offerLetterImageUrl);
+  const escapeHtml = (value = "") =>
+    String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
 
-    const formattedJoiningDate = joiningDate
-      ? new Date(joiningDate).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      : "To be confirmed";
+  const formatCalendarDate = (value) => {
+    if (!value) return "To be confirmed";
+
+    const raw = String(value);
+    const direct = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (direct) {
+      const [, year, month, day] = direct;
+      const localDate = new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        12,
+        0,
+        0
+      );
+      return localDate.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return raw;
+
+    const localDate = new Date(
+      parsed.getUTCFullYear(),
+      parsed.getUTCMonth(),
+      parsed.getUTCDate(),
+      12,
+      0,
+      0
+    );
+
+    return localDate.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const safeCandidateName = escapeHtml(candidateName || "Candidate");
+  const safeJobTitle = escapeHtml(jobTitle || "Position");
+  const safeOrgName = escapeHtml(orgName || "Our Company");
+  const safeDepartment = escapeHtml(department || "—");
+  const safeSalary = salary ? escapeHtml(salary) : "";
+  const safeSupportEmail = escapeHtml(
+    supportEmail || process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || "support@company.com"
+  );
+  const safeOfferUrl = offerLetterImageUrl ? String(offerLetterImageUrl) : "";
+  const formattedJoiningDate = escapeHtml(formatCalendarDate(joiningDate));
+
+  try {
+    if (!candidateEmail) {
+      return { success: false, error: "Candidate email is missing" };
+    }
+
+    if (!safeOfferUrl) {
+      return { success: false, error: "Offer letter attachment URL is missing" };
+    }
+
+    console.log("📧 Sending offer letter email to:", candidateEmail);
+    console.log("📧 Offer document:", safeOfferUrl);
+
+    let attachmentBuffer = null;
+    let attachmentContentType = "image/png";
+
+    try {
+      const response = await fetch(safeOfferUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      attachmentBuffer = Buffer.from(await response.arrayBuffer());
+      attachmentContentType =
+        response.headers.get("content-type") || attachmentContentType;
+    } catch (downloadError) {
+      console.warn(
+        "Could not pre-download offer letter for attachment; Nodemailer will use the hosted URL:",
+        downloadError?.message || downloadError
+      );
+    }
+
+    const slug =
+      String(jobTitle || "offer-letter")
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase() || "offer-letter";
+
+    const attachmentFilename = `${slug}-offer-letter.png`;
+    const inlineCid = `offer-letter-${String(
+      offerLetterId || Date.now()
+    )}@hiring360`;
+
+    const attachments = [];
+
+    if (attachmentBuffer) {
+      attachments.push({
+        filename: attachmentFilename,
+        content: attachmentBuffer,
+        contentType: attachmentContentType,
+        cid: inlineCid,
+        contentDisposition: "inline",
+      });
+
+      attachments.push({
+        filename: attachmentFilename,
+        content: attachmentBuffer,
+        contentType: attachmentContentType,
+        contentDisposition: "attachment",
+      });
+    } else {
+      attachments.push({
+        filename: attachmentFilename,
+        href: safeOfferUrl,
+        contentType: attachmentContentType,
+      });
+    }
+
+    const imageSource = attachmentBuffer ? `cid:${inlineCid}` : safeOfferUrl;
+    const logoHtml = organizationLogo
+      ? `<img src="${escapeHtml(
+          organizationLogo
+        )}" alt="${safeOrgName}" style="max-height:42px;max-width:180px;object-fit:contain;margin-bottom:14px;" />`
+      : "";
 
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Offer Letter</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background-color: #f8f9fb;
-      color: #1a1a2e;
-      line-height: 1.6;
-    }
-    .container { max-width: 560px; margin: 0 auto; padding: 24px 16px; }
-    .card {
-      background: #ffffff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-      border: 1px solid #e8ecf1;
-    }
-    .header {
-      padding: 32px 28px 24px;
-      text-align: center;
-      border-bottom: 1px solid #f0f2f5;
-    }
-    .logo { max-height: 40px; width: auto; margin-bottom: 16px; }
-    .badge {
-      display: inline-block;
-      background: #eef2ff;
-      color: #4f46e5;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      padding: 4px 12px;
-      border-radius: 100px;
-      text-transform: uppercase;
-    }
-    .title {
-      font-size: 22px;
-      font-weight: 700;
-      color: #111827;
-      margin: 12px 0 4px;
-    }
-    .subtitle {
-      font-size: 13px;
-      color: #6b7280;
-    }
-    .body { padding: 28px; }
-    .greeting { font-size: 15px; color: #1f2937; margin-bottom: 16px; }
-    .greeting strong { color: #111827; }
-    .message { font-size: 14px; color: #4b5563; margin-bottom: 24px; line-height: 1.7; }
-
-    .details-box {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 16px 20px;
-      margin-bottom: 24px;
-    }
-    .details-box h3 {
-      font-size: 10px;
-      font-weight: 700;
-      color: #9ca3af;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 12px;
-    }
-    .detail-row {
-      display: flex;
-      padding: 6px 0;
-      font-size: 13px;
-    }
-    .detail-label { color: #6b7280; width: 100px; flex-shrink: 0; }
-    .detail-value { color: #111827; font-weight: 500; }
-
-    .offer-image-section {
-      margin-bottom: 24px;
-    }
-    .offer-image-section h3 {
-      font-size: 10px;
-      font-weight: 700;
-      color: #9ca3af;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 12px;
-      text-align: center;
-    }
-    .offer-image-link {
-      display: block;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      overflow: hidden;
-      transition: box-shadow 0.2s;
-    }
-    .offer-image-link:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    .offer-image-link img {
-      width: 100%;
-      display: block;
-    }
-    .actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-    }
-    .btn {
-      flex: 1;
-      display: inline-block;
-      padding: 10px 16px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      text-align: center;
-      transition: all 0.15s;
-    }
-    .btn-primary {
-      background: #4f46e5;
-      color: #ffffff;
-      border: 1px solid #4f46e5;
-    }
-    .btn-primary:hover { background: #4338ca; }
-    .btn-secondary {
-      background: #ffffff;
-      color: #4f46e5;
-      border: 1px solid #d1d5db;
-    }
-    .btn-secondary:hover { background: #f9fafb; }
-
-    .closing { font-size: 14px; color: #4b5563; margin-top: 24px; line-height: 1.7; }
-    .signature { margin-top: 16px; font-size: 14px; color: #1f2937; }
-    .signature strong { font-size: 15px; }
-
-    .footer {
-      padding: 16px 28px;
-      border-top: 1px solid #f0f2f5;
-      text-align: center;
-      background: #fafbfc;
-    }
-    .footer p { font-size: 11px; color: #9ca3af; margin: 2px 0; }
-    .footer a { color: #4f46e5; text-decoration: none; }
-  </style>
 </head>
-<body>
-  <div class="container">
-    <div class="card">
-      
-      <!-- Header -->
-      <div class="header">
-        ${organizationLogo ? `<img src="${organizationLogo}" alt="${orgName}" class="logo" />` : ''}
-        <div class="badge">Offer Letter</div>
-        <h1 class="title">${jobTitle}</h1>
-        <p class="subtitle">${orgName} · ${department || ''}</p>
+<body style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+  <div style="max-width:620px;margin:0 auto;padding:24px 14px;">
+    <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+      <div style="padding:28px 28px 22px;text-align:center;border-bottom:1px solid #eef0f3;">
+        ${logoHtml}
+        <div style="display:inline-block;padding:5px 12px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;">Offer Letter</div>
+        <h1 style="margin:12px 0 4px;font-size:22px;line-height:1.25;color:#111827;">${safeJobTitle}</h1>
+        <p style="margin:0;color:#6b7280;font-size:13px;">${safeOrgName}${
+      safeDepartment !== "—" ? ` · ${safeDepartment}` : ""
+    }</p>
       </div>
 
-      <!-- Body -->
-      <div class="body">
-        <p class="greeting">Dear <strong>${candidateName}</strong>,</p>
-        
-        <p class="message">
-          We are delighted to extend this formal offer of employment. After careful consideration of your qualifications and experience, we believe you will be a valuable addition to our team.
+      <div style="padding:28px;">
+        <p style="margin:0 0 16px;font-size:15px;">Dear <strong>${safeCandidateName}</strong>,</p>
+        <p style="margin:0 0 22px;color:#4b5563;font-size:14px;line-height:1.7;">
+          We are pleased to share your formal offer for the <strong>${safeJobTitle}</strong> position at ${safeOrgName}.
         </p>
 
-        <!-- Details -->
-        <div class="details-box">
-          <h3>Offer Summary</h3>
-          <div class="detail-row">
-            <span class="detail-label">Position</span>
-            <span class="detail-value">${jobTitle}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Department</span>
-            <span class="detail-value">${department || '—'}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Start Date</span>
-            <span class="detail-value">${formattedJoiningDate}</span>
-          </div>
-          ${salary ? `
-          <div class="detail-row">
-            <span class="detail-label">Salary</span>
-            <span class="detail-value">${salary}</span>
-          </div>
-          ` : ''}
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:9px;padding:16px 18px;margin-bottom:24px;">
+          <p style="margin:0 0 10px;color:#9ca3af;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Offer Summary</p>
+          <p style="margin:5px 0;font-size:13px;"><span style="display:inline-block;width:110px;color:#6b7280;">Position</span><strong>${safeJobTitle}</strong></p>
+          <p style="margin:5px 0;font-size:13px;"><span style="display:inline-block;width:110px;color:#6b7280;">Department</span><strong>${safeDepartment}</strong></p>
+          <p style="margin:5px 0;font-size:13px;"><span style="display:inline-block;width:110px;color:#6b7280;">Start Date</span><strong>${formattedJoiningDate}</strong></p>
+          ${
+            safeSalary
+              ? `<p style="margin:5px 0;font-size:13px;"><span style="display:inline-block;width:110px;color:#6b7280;">Salary</span><strong>${safeSalary}</strong></p>`
+              : ""
+          }
         </div>
 
-        <!-- Offer Letter Image -->
-        ${offerLetterImageUrl ? `
-        <div class="offer-image-section">
-          <h3>Your Offer Letter</h3>
-          <a href="${offerLetterImageUrl}" target="_blank" class="offer-image-link">
-            <img src="${offerLetterImageUrl}" alt="Offer Letter" />
-          </a>
-          <div class="actions">
-            <a href="${offerLetterImageUrl}" target="_blank" class="btn btn-primary">View Full Letter</a>
-            <a href="${offerLetterImageUrl}" download class="btn btn-secondary">Download</a>
-          </div>
-        </div>
-        ` : ''}
+        <p style="margin:0 0 10px;color:#9ca3af;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;text-align:center;">Your Offer Letter</p>
+        <a href="${safeOfferUrl}" target="_blank" style="display:block;border:1px solid #e5e7eb;border-radius:9px;overflow:hidden;text-decoration:none;background:#fff;">
+          <img src="${imageSource}" alt="Offer Letter" style="display:block;width:100%;height:auto;border:0;" />
+        </a>
 
-        <p class="closing">
-          Please review the offer letter at your earliest convenience. Should you have any questions or wish to discuss any aspect of this offer, please do not hesitate to contact us.
+        <div style="text-align:center;margin:16px 0 0;">
+          <a href="${safeOfferUrl}" target="_blank" style="display:inline-block;padding:11px 20px;border-radius:7px;background:#4338ca;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">View Full Offer Letter</a>
+        </div>
+
+        <p style="margin:24px 0 0;color:#4b5563;font-size:14px;line-height:1.7;">
+          The full letter is also attached to this email. Please review it carefully and contact us if you have any questions.
         </p>
 
-        <p class="closing">
-          We look forward to welcoming you aboard and building something great together.
-        </p>
-
-        <div class="signature">
-          <p>Warm regards,</p>
-          <p><strong>${orgName} Team</strong></p>
-        </div>
+        <p style="margin:20px 0 0;font-size:14px;line-height:1.6;">Warm regards,<br /><strong>${safeOrgName} Team</strong></p>
       </div>
 
-      <!-- Footer -->
-      <div class="footer">
-        <p>Need help? <a href="mailto:${supportEmail}">${supportEmail}</a></p>
-        <p>&copy; ${new Date().getFullYear()} ${orgName}. All rights reserved.</p>
+      <div style="padding:16px 24px;background:#fafbfc;border-top:1px solid #eef0f3;text-align:center;">
+        <p style="margin:0;color:#9ca3af;font-size:11px;">Need help? <a href="mailto:${safeSupportEmail}" style="color:#4338ca;text-decoration:none;">${safeSupportEmail}</a></p>
+        <p style="margin:4px 0 0;color:#9ca3af;font-size:11px;">© ${new Date().getFullYear()} ${safeOrgName}</p>
       </div>
-
     </div>
   </div>
 </body>
@@ -436,9 +394,10 @@ export const sendOfferLetterEmail = async ({
     const result = await transporter.sendMail({
       from: `"${orgName}" <${process.env.EMAIL_FROM}>`,
       to: candidateEmail,
-      subject: `Offer Letter: ${jobTitle} — ${orgName}`,
+      subject: `Offer Letter: ${jobTitle || "Position"} — ${orgName}`,
       html,
-      replyTo: supportEmail,
+      attachments,
+      replyTo: supportEmail || process.env.EMAIL_FROM,
     });
 
     console.log("✅ Offer letter email sent:", result.messageId);

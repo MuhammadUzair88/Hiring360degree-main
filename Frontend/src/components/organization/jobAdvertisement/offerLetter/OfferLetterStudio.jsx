@@ -2,7 +2,9 @@ import React, { useRef, useState, useEffect } from "react";
 import { Save, ArrowLeft, PenTool, CheckCircle2, RefreshCcw, Loader2, Upload, AlertCircle } from "lucide-react";
 import DesignControls from "./DesignControls";
 import A4Preview from "./A4Preview";
-import { fileToDataUrl } from "./offerDateUtils";
+import { getTodayDateInput } from "./offerDateUtils";
+import { uploadImageToCloudinary } from "../../../../utils/uploadImage";
+import { resolveOfferPalette } from "./Theme";
 
 /**
  * Design + signature customization screen. Reached inline from the
@@ -19,7 +21,7 @@ export default function OfferLetterStudio({ organizationName, organization, adve
 
   useEffect(() => setPendingSignature(signature), [signature]);
 
-  const currentColors = design.colors?.[design.theme] || design.colors?.corporate || {};
+  const currentColors = resolveOfferPalette(design?.colors, design?.theme || "corporate");
 
   const handleFileSelect = async (event) => {
     const file = event.target.files?.[0];
@@ -39,10 +41,10 @@ export default function OfferLetterStudio({ organizationName, organization, adve
     setIsUploading(true);
     setError("");
     try {
-      const dataUrl = await fileToDataUrl(file);
-      const next = { url: dataUrl, name: file.name, uploadedAt: new Date().toISOString() };
+      const uploadedUrl = await uploadImageToCloudinary(file);
+      const next = { url: uploadedUrl, name: file.name, uploadedAt: new Date().toISOString() };
+      await onSignatureChange(next);
       setPendingSignature(next);
-      onSignatureChange(next);
     } catch {
       setError("Signature upload failed. Please try again.");
     } finally {
@@ -51,9 +53,17 @@ export default function OfferLetterStudio({ organizationName, organization, adve
     }
   };
 
-  const handleRemoveSignature = () => {
-    setPendingSignature(null);
-    onSignatureChange(null);
+  const handleRemoveSignature = async () => {
+    setIsUploading(true);
+    setError("");
+    try {
+      await onSignatureChange(null);
+      setPendingSignature(null);
+    } catch (err) {
+      setError(err?.message || "Could not remove the saved signature.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const organizationDisplayName = organization?.name || organizationName || "Your Organization";
@@ -148,7 +158,12 @@ export default function OfferLetterStudio({ organizationName, organization, adve
           <div className="p-6 bg-secondary-50 rounded-2xl shadow-sm outline outline-1 outline-offset-[-1px] outline-secondary-300">
             <DesignControls
               theme={design.theme}
-              setTheme={(value) => onDesignChange({ theme: value })}
+              setTheme={(value) =>
+                  onDesignChange({
+                    theme: value,
+                    colors: resolveOfferPalette(null, value),
+                  })
+                }
               brandingPreference={design.brandingPreference}
               setBrandingPreference={(value) => onDesignChange({ brandingPreference: value })}
               logoSize={design.logoSize}
@@ -162,7 +177,11 @@ export default function OfferLetterStudio({ organizationName, organization, adve
               spacing={design.spacing}
               setSpacing={(value) => onDesignChange({ spacing: value })}
               colors={currentColors}
-              onColorChange={(colorKey, value) => onDesignChange({ colors: { ...design.colors, [design.theme]: { ...currentColors, [colorKey]: value } } })}
+              onColorChange={(colorKey, value) =>
+                  onDesignChange({
+                    colors: { ...currentColors, [colorKey]: value },
+                  })
+                }
               onResetColors={() => onResetColors(design.theme)}
             />
           </div>
@@ -184,7 +203,7 @@ export default function OfferLetterStudio({ organizationName, organization, adve
                 bodyFontSize={design.bodyFontSize}
                 signatureSize={design.signatureSize}
                 spacing={design.spacing}
-                formData={{ joiningDate: new Date().toISOString().split("T")[0], endingDate: "" }}
+                formData={{ joiningDate: getTodayDateInput(), endingDate: "" }}
                 signature={pendingSignature}
                 customContent={null}
                 maxScale={1}
