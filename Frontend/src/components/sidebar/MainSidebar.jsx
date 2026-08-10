@@ -5,6 +5,7 @@ import {
   Megaphone,
   Users,
   Settings,
+  Link2,
   LogOut,
   X,
   ChevronLeft,
@@ -20,6 +21,7 @@ const navItems = [
   { label: "Dashboard", to: "/", icon: LayoutDashboard, end: true },
   { label: "Job Advertisement", to: "/advertisement", icon: Megaphone },
   { label: "Interviewer", to: "/interviewer", icon: Users },
+  { label: "Connect Account", to: "/connect-account", icon: Link2 },
   { label: "Settings", to: "/settings", icon: Settings },
 ];
 

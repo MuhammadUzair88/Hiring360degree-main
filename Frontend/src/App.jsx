@@ -32,6 +32,8 @@ import {
   InterviewerGuestOnlyRoute,
 } from "./components/routing/ProtectedRoute";
 import Login from "./pages/Login";
+import SocialAccountManager from "./pages/connectSocials/SocialAccountManager";
+import SocialConnectCallback from "./pages/connectSocials/SocialConnectCallback";
 
 function App() {
   return (
@@ -79,11 +81,20 @@ function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/advertisement" element={<Advertisement />} />
           <Route path="/advertisement/add" element={<CreateAdvertisement />} />
+          <Route path="/connect-account" element={<SocialAccountManager />} />
+
+          <Route
+            path="/organization/social"
+            element={<SocialConnectCallback />}
+          />
         </Route>
 
         <Route element={<SecondaryLayout />}>
           <Route path="/advertisement/job/:id" element={<JobOverviewPage />} />
-          <Route path="/advertisement/edit/:id" element={<EditAdvertisement />} />
+          <Route
+            path="/advertisement/edit/:id"
+            element={<EditAdvertisement />}
+          />
           <Route
             path="/advertisement/job/:id/candidate-intake"
             element={<CandidateIntake />}

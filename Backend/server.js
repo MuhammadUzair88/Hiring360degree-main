@@ -14,6 +14,7 @@ import interviewRoutes from "./routes/interviewRoutes.js"
 import interviewerDashboardRoutes from "./routes/interviewerDashboardRoutes.js"
 import offerLetterRoutes from "./routes/offerLetterRoutes.js"
 import dashboardRoutes from './routes/orgDashboardRoutes.js';
+import socialRoutes from "./routes/socialRoutes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -37,6 +38,10 @@ app.use("/api/chat",chatRoutes);
 app.use("/api/interview",interviewRoutes);
 app.use("/api/interviewer/dash",interviewerDashboardRoutes);
 app.use("/api/offer",offerLetterRoutes);
+app.use(
+  "/api/organization/social",
+  socialRoutes
+);
 
 
 app.get("/", (req, res) => {
