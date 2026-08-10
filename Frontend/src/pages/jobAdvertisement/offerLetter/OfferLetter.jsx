@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+
+
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import {
@@ -25,7 +27,6 @@ export default function OfferLetterPage() {
     isConfigured,
     finalizeSetup,
     step,
-    setStep,
     openStudio,
     closeStudio,
     openEditor,
@@ -39,7 +40,6 @@ export default function OfferLetterPage() {
     resetDesignColors,
     signature,
     saveSignature,
-    offerValidityDays,
     notifyingId,
     notifyTab,
     setNotifyTab,
@@ -51,18 +51,21 @@ export default function OfferLetterPage() {
     getOfferForCandidate,
   } = offerLetter;
 
-  const [pendingSetupSkip, setPendingSetupSkip] = useState(false);
-
   const organizationForDisplay = organization || {};
   const advertisementForDisplay = job || {};
 
-  // First visit for this job's offer letter settings: ask for a signature
-  // before anything else can be generated (skippable — a candidate can
-  // still be selected/reviewed without a signature yet).
-  if (!isLoading && !isConfigured && !pendingSetupSkip) {
+  if (isLoading) {
+    return (
+      <div className="w-full min-h-[50vh] flex items-center justify-center text-sm text-gray-500">
+        Loading offer letters…
+      </div>
+    );
+  }
+
+  if (!error && !isConfigured) {
     return (
       <OfferLetterSetupModal
-        onFinalize={(signatureData, validityDays) => finalizeSetup(signatureData, validityDays)}
+        onFinalize={finalizeSetup}
         organizationName={organizationForDisplay.name || "Your Organization"}
       />
     );
@@ -87,24 +90,29 @@ export default function OfferLetterPage() {
 
   return (
     <>
-      <div className="space-y-6 animate-fadeIn font-sans text-slate-900 px-2">
+      <div className="w-full flex flex-col gap-6">
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={() => navigate(-1)}
             className="p-2 bg-secondary-100 hover:bg-secondary-200/50 border border-secondary-300 text-slate-900 rounded-xl transition-all cursor-pointer"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Offer Letter</h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <h1 className="text-slate-900 text-xl sm:text-2xl font-semibold">
+              Offer Letter
+            </h1>
+            <p className="text-gray-700 text-sm">
               Manage passed candidates, generate offer letters, and notify them.
             </p>
           </div>
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
         )}
 
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
@@ -113,7 +121,7 @@ export default function OfferLetterPage() {
               candidates={candidates}
               selectedId={selectedCandidateId}
               onSelect={selectCandidate}
-              onCreateOffer={(id) => openEditor(id)}
+              onCreateOffer={openEditor}
               isLoading={isLoading}
             />
           </div>
@@ -125,11 +133,14 @@ export default function OfferLetterPage() {
               advertisement={advertisementForDisplay}
               design={design}
               signature={signature}
-              offerValidityDays={offerValidityDays}
               totalCandidates={candidates.length}
               onCustomize={openStudio}
-              onEdit={() => activeCandidate && openEditor(activeCandidate.applicationId)}
-              onGenerate={() => activeCandidate && openEditor(activeCandidate.applicationId)}
+              onEdit={() =>
+                activeCandidate && openEditor(activeCandidate.applicationId)
+              }
+              onGenerate={() =>
+                activeCandidate && openEditor(activeCandidate.applicationId)
+              }
             />
           </div>
 
@@ -141,8 +152,8 @@ export default function OfferLetterPage() {
               notifyingId={notifyingId}
               selectedId={selectedCandidateId}
               onSelect={selectCandidate}
-              onEditCandidate={(id) => openEditor(id)}
-              onNotify={(id) => triggerNotify(id)}
+              onEditCandidate={openEditor}
+              onNotify={triggerNotify}
               onPreviewCandidate={openPreview}
             />
           </div>
@@ -157,7 +168,6 @@ export default function OfferLetterPage() {
         advertisement={advertisementForDisplay}
         design={design}
         signature={signature}
-        offerValidityDays={offerValidityDays}
         offer={getOfferForCandidate(previewApplicationId)}
       />
     </>

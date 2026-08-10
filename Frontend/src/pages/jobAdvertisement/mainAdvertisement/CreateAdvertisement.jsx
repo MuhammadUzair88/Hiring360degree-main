@@ -14,10 +14,14 @@ import {
   initialPamphletSettings,
   pamphletThemeDefaultColors,
 } from "../../../components/organization/jobAdvertisement/advertisement/pamphletdata";
-import { exportNodeAsPng, uploadDataUrlToCloudinary } from "../../../components/organization/jobAdvertisement/advertisement/Pamphletutils";
+import {
+  exportNodeAsPng,
+  uploadDataUrlToCloudinary,
+} from "../../../components/organization/jobAdvertisement/advertisement/Pamphletutils";
 import advertisementService from "../../../services/advertisementService";
 import { extractErrorMessage } from "../../../services/apiClient";
 import { useToast } from "../../../context/ToastContext";
+import { useAuth } from "../../../context/AuthContext";
 
 const REQUIRED_FIELD_LABELS = {
   jobTitle: "a Job Title",
@@ -35,7 +39,9 @@ const CreateAdvertisement = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState(initialAdvertisementForm);
-  const [pamphletSettings, setPamphletSettings] = useState(initialPamphletSettings);
+  const [pamphletSettings, setPamphletSettings] = useState(
+    initialPamphletSettings,
+  );
   const [isPamphletGenerated, setIsPamphletGenerated] = useState(false);
   const [showPamphlet, setShowPamphlet] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,6 +50,7 @@ const CreateAdvertisement = () => {
   const [pamphletImageDataUrl, setPamphletImageDataUrl] = useState(null);
   const [publishedJobId, setPublishedJobId] = useState(null);
   const toast = useToast();
+  const { organization } = useAuth();
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -59,14 +66,13 @@ const CreateAdvertisement = () => {
       return Array.isArray(value) ? value.length === 0 : !value;
     });
 
-
-    const handlePublish = async () => {
+  const handlePublish = async () => {
     if (isSubmitting) return;
 
     const missing = getMissingFields();
     if (missing.length > 0) {
       setSubmitError(
-        `Please add ${missing.map((field) => REQUIRED_FIELD_LABELS[field] || field).join(", ")} before publishing.`
+        `Please add ${missing.map((field) => REQUIRED_FIELD_LABELS[field] || field).join(", ")} before publishing.`,
       );
       return;
     }
@@ -83,21 +89,24 @@ const CreateAdvertisement = () => {
           capturedDataUrl = await exportNodeAsPng(PUBLISH_CAPTURE_ID);
           generatedImageUrl = await uploadDataUrlToCloudinary(capturedDataUrl);
         } catch (captureError) {
-          console.warn("Could not generate/upload the campaign image.", captureError);
+          console.warn(
+            "Could not generate/upload the campaign image.",
+            captureError,
+          );
         }
       }
 
       const payload = {
         ...formData,
-              generatedImageUrl,
-              template: pamphletSettings.theme,
-              colors: pamphletSettings.colors?.[pamphletSettings.theme],
-              brandingPreference: pamphletSettings.branding,
-              logoSize: pamphletSettings.logoSize,
-              headingSize: pamphletSettings.headingSize,
-              };
+        generatedImageUrl,
+        template: pamphletSettings.theme,
+        colors: pamphletSettings.colors?.[pamphletSettings.theme],
+        brandingPreference: pamphletSettings.branding,
+        logoSize: pamphletSettings.logoSize,
+        headingSize: pamphletSettings.headingSize,
+      };
 
-          const result = await advertisementService.create(payload);
+      const result = await advertisementService.create(payload);
 
       setPamphletImageDataUrl(capturedDataUrl);
       setPublishedJobId(result.advertisement?._id || null);
@@ -106,20 +115,22 @@ const CreateAdvertisement = () => {
       setSubmitError(
         error?.response?.data?.message ||
           error?.message ||
-          "Something went wrong while publishing this job. Please try again."
+          "Something went wrong while publishing this job. Please try again.",
       );
-       toast.error(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-
-
-  const setPamphletTheme = (theme) => setPamphletSettings((prev) => ({ ...prev, theme }));
-  const setPamphletBranding = (branding) => setPamphletSettings((prev) => ({ ...prev, branding }));
-  const setPamphletLogoSize = (logoSize) => setPamphletSettings((prev) => ({ ...prev, logoSize }));
-  const setPamphletHeadingSize = (headingSize) => setPamphletSettings((prev) => ({ ...prev, headingSize }));
+  const setPamphletTheme = (theme) =>
+    setPamphletSettings((prev) => ({ ...prev, theme }));
+  const setPamphletBranding = (branding) =>
+    setPamphletSettings((prev) => ({ ...prev, branding }));
+  const setPamphletLogoSize = (logoSize) =>
+    setPamphletSettings((prev) => ({ ...prev, logoSize }));
+  const setPamphletHeadingSize = (headingSize) =>
+    setPamphletSettings((prev) => ({ ...prev, headingSize }));
 
   const handlePamphletColorChange = (theme, colorKey, value) => {
     setPamphletSettings((prev) => ({
@@ -134,7 +145,10 @@ const CreateAdvertisement = () => {
   const resetPamphletTheme = (theme) => {
     setPamphletSettings((prev) => ({
       ...prev,
-      colors: { ...prev.colors, [theme]: { ...pamphletThemeDefaultColors[theme] } },
+      colors: {
+        ...prev.colors,
+        [theme]: { ...pamphletThemeDefaultColors[theme] },
+      },
     }));
   };
 
@@ -145,7 +159,8 @@ const CreateAdvertisement = () => {
 
   const closePamphletEditor = () => setShowPamphlet(false);
 
-  const currentPamphletColors = pamphletSettings.colors?.[pamphletSettings.theme] || {};
+  const currentPamphletColors =
+    pamphletSettings.colors?.[pamphletSettings.theme] || {};
 
   return (
     <>
@@ -177,8 +192,14 @@ const CreateAdvertisement = () => {
 
       {/* Off-screen — only exists so exportNodeAsPng has a real 1200x630
           node to screenshot the moment a publish succeeds. */}
-      <div style={{ position: "absolute", left: "-9999px", top: 0 }} aria-hidden="true">
-        <div id={PUBLISH_CAPTURE_ID} style={{ width: "1200px", height: "630px" }}>
+      <div
+        style={{ position: "absolute", left: "-9999px", top: 0 }}
+        aria-hidden="true"
+      >
+        <div
+          id={PUBLISH_CAPTURE_ID}
+          style={{ width: "1200px", height: "630px" }}
+        >
           <JobPamphletPreview
             theme={pamphletSettings.theme}
             job={formData}
@@ -186,6 +207,8 @@ const CreateAdvertisement = () => {
             branding={pamphletSettings.branding}
             logoSize={pamphletSettings.logoSize}
             headingSize={pamphletSettings.headingSize}
+            organizationName={organization?.name}
+            organizationLogoUrl={organization?.logo}
           />
         </div>
       </div>

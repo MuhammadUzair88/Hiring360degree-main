@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-import {
-  OfferLetterContentEditor,
-} from "../../../components/organization/jobAdvertisement/offerLetter";
-
+import { OfferLetterContentEditor } from "../../../components/organization/jobAdvertisement/offerLetter";
 import {
   getOfferLetterByApplicationId,
   saveOfferLetterContent,
@@ -12,13 +9,17 @@ import {
   getOfferLetterSettings,
   DEFAULT_OFFER_DESIGN,
 } from "../../../components/organization/jobAdvertisement/offerLetter/data";
+import { resolveOfferPalette } from "../../../components/organization/jobAdvertisement/offerLetter/Theme";
 import { useAuth } from "../../../context/AuthContext";
 import advertisementService from "../../../services/advertisementService";
 import { extractErrorMessage } from "../../../services/apiClient";
 import { useToast } from "../../../context/ToastContext";
 
 export default function EditOfferLetter() {
-  const { jobId, applicationId } = useParams();
+  const params = useParams();
+  const jobId = params.id || params.jobId || null;
+  const applicationId = params.applicationId || null;
+
   const navigate = useNavigate();
   const { organization } = useAuth();
   const toast = useToast();
@@ -28,24 +29,55 @@ export default function EditOfferLetter() {
   const [advertisement, setAdvertisement] = useState(null);
   const [otherCandidates, setOtherCandidates] = useState([]);
   const [offerData, setOfferData] = useState(null);
-  const [design, setDesign] = useState(DEFAULT_OFFER_DESIGN);
+  const [design, setDesign] = useState(() => ({
+    ...DEFAULT_OFFER_DESIGN,
+    colors: resolveOfferPalette(
+      DEFAULT_OFFER_DESIGN.colors,
+      DEFAULT_OFFER_DESIGN.theme
+    ),
+  }));
   const [signature, setSignature] = useState(null);
+  const [loadError, setLoadError] = useState("");
+
+  const backTo = jobId
+    ? `/advertisement/job/${jobId}/offer-letter`
+    : "/advertisement";
 
   useEffect(() => {
+    let active = true;
+
     async function load() {
+      setLoading(true);
+      setLoadError("");
+
+      if (!jobId || !applicationId) {
+        if (active) {
+          setLoadError("The offer letter route is missing the job or application ID.");
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
-        const [candidates, adData] = await Promise.all([
+        const [candidates, adData, settings, offer] = await Promise.all([
           getOfferedCandidatesByJobId(jobId),
           advertisementService.getById(jobId),
+          getOfferLetterSettings(jobId),
+          getOfferLetterByApplicationId(applicationId),
         ]);
-        setAdvertisement(adData.advertisement || null);
+
+        if (!active) return;
 
         const selectedCandidate = candidates.find(
-          (c) => c.applicationId === applicationId
+          (item) => String(item.applicationId) === String(applicationId)
         );
 
+        setAdvertisement(adData?.advertisement || null);
+        setOfferData(offer || null);
+
         if (!selectedCandidate) {
-          setLoading(false);
+          setCandidate(null);
+          setOtherCandidates([]);
           return;
         }
 
@@ -54,89 +86,162 @@ export default function EditOfferLetter() {
         setOtherCandidates(
           candidates
             .filter(
-              (c) =>
-                c.applicationId !== applicationId &&
-                !c.hasOffer
+              (item) =>
+                String(item.applicationId) !== String(applicationId) &&
+                !item.hasOffer
             )
-            .map((c) => ({
-              id: c.applicationId,
-              name: c.name,
-              jobTitle: c.position,
+            .map((item) => ({
+              id: String(item.applicationId),
+              name: item.name,
+              jobTitle: item.position,
             }))
         );
 
-        const offer = await getOfferLetterByApplicationId(applicationId);
-
-        setOfferData(offer);
-
-        const settings = await getOfferLetterSettings(jobId);
-
         if (settings) {
+          const theme = settings.template || DEFAULT_OFFER_DESIGN.theme;
+
           setDesign({
-            theme: settings.template || DEFAULT_OFFER_DESIGN.theme,
-            colors: settings.colors || DEFAULT_OFFER_DESIGN.colors,
+            ...DEFAULT_OFFER_DESIGN,
+            theme,
+            colors: resolveOfferPalette(settings.colors, theme),
             brandingPreference:
               settings.brandingPreference ||
               DEFAULT_OFFER_DESIGN.brandingPreference,
-            logoSize:
-              settings.logoSize ||
-              DEFAULT_OFFER_DESIGN.logoSize,
+            logoSize: settings.logoSize ?? DEFAULT_OFFER_DESIGN.logoSize,
             headingSize:
-              settings.headingSize ||
-              DEFAULT_OFFER_DESIGN.headingSize,
+              settings.headingSize ?? DEFAULT_OFFER_DESIGN.headingSize,
             bodyFontSize:
-              settings.bodyFontSize ||
-              DEFAULT_OFFER_DESIGN.bodyFontSize,
+              settings.bodyFontSize ?? DEFAULT_OFFER_DESIGN.bodyFontSize,
             signatureSize:
-              settings.signatureSize ||
-              DEFAULT_OFFER_DESIGN.signatureSize,
-            spacing:
-              settings.spacing ||
-              DEFAULT_OFFER_DESIGN.spacing,
+              settings.signatureSize ?? DEFAULT_OFFER_DESIGN.signatureSize,
+            spacing: settings.spacing ?? DEFAULT_OFFER_DESIGN.spacing,
           });
 
           setSignature(settings.signature || null);
+        } else {
+          setDesign({
+            ...DEFAULT_OFFER_DESIGN,
+            colors: resolveOfferPalette(
+              DEFAULT_OFFER_DESIGN.colors,
+              DEFAULT_OFFER_DESIGN.theme
+            ),
+          });
+          setSignature(null);
         }
       } catch (error) {
-        toast.error(extractErrorMessage(error, "Failed to load the offer letter editor."));
+        if (!active) return;
+
+        const message = extractErrorMessage(
+          error,
+          "Failed to load the offer letter editor."
+        );
+
+        setLoadError(message);
+        toast.error(message);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
     load();
-  }, [jobId, applicationId]);
+
+    return () => {
+      active = false;
+    };
+  }, [jobId, applicationId, toast]);
 
   const handleSave = async (
-    applicationId,
+    targetApplicationId,
     content,
     selectedIds = []
   ) => {
     try {
+      if (!targetApplicationId) {
+        throw new Error("Application ID is missing.");
+      }
+
+      if (!content?.offerLetterImageUrl) {
+        throw new Error(
+          "The offer letter image was not generated. Please try saving again."
+        );
+      }
+
       await saveOfferLetterContent(
-        applicationId,
+        targetApplicationId,
         content,
         selectedIds
       );
-      toast.success("Offer letter saved.");
-      navigate(`/advertisement/job/${jobId}/offer-letter`);
+
+      // Verify the document URL actually reached MongoDB before leaving the editor.
+      const savedOffer = await getOfferLetterByApplicationId(
+        targetApplicationId
+      );
+
+      if (!savedOffer?.offerLetterUrl) {
+        throw new Error(
+          "The offer content was saved, but the email attachment URL was not stored."
+        );
+      }
+
+      toast.success("Offer letter and email attachment saved successfully.");
+
+      // Replace prevents returning to a stale editor page with browser back.
+      navigate(backTo, {
+        replace: true,
+        state: {
+          refreshOffers: true,
+          savedApplicationId: String(targetApplicationId),
+          offerLetterUrl: savedOffer.offerLetterUrl,
+        },
+      });
     } catch (error) {
-      toast.error(extractErrorMessage(error, "Failed to save this offer letter."));
+      console.error("Offer letter save failed:", error);
+      toast.error(
+        extractErrorMessage(
+          error,
+          "Failed to save this offer letter."
+        )
+      );
+      throw error;
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        Loading...
+      <div className="min-h-[50vh] flex items-center justify-center text-sm text-gray-500">
+        Loading offer letter…
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-center px-4">
+        <p className="text-sm text-red-700">{loadError}</p>
+        <button
+          type="button"
+          onClick={() => navigate(backTo)}
+          className="px-4 py-2 rounded-lg bg-primary-800 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+        >
+          Back to Offer Letters
+        </button>
       </div>
     );
   }
 
   if (!candidate) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        Candidate not found.
+      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-center px-4">
+        <p className="text-sm text-gray-500">
+          Candidate not found or is no longer in the Offered stage.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate(backTo)}
+          className="px-4 py-2 rounded-lg bg-primary-800 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+        >
+          Back to Offer Letters
+        </button>
       </div>
     );
   }
@@ -146,34 +251,19 @@ export default function EditOfferLetter() {
       candidate={candidate}
       organization={organization || {}}
       advertisement={advertisement || {}}
-      theme={design.theme}
-      colors={design.colors}
-      brandingPreference={design.brandingPreference}
-      logoSize={design.logoSize}
-      headingSize={design.headingSize}
-      bodyFontSize={design.bodyFontSize}
-      signatureSize={design.signatureSize}
-      spacing={design.spacing}
+      design={design}
       signature={signature}
       initialJoiningDate={
-        offerData?.content?.joiningDate ||
-        candidate.joiningDate ||
-        ""
+        offerData?.content?.joiningDate || candidate.joiningDate || ""
       }
       initialEndingDate={
-        offerData?.content?.endingDate ||
-        candidate.endingDate ||
-        ""
+        offerData?.content?.endingDate || candidate.endingDate || ""
       }
-      initialOfferContent={
-        offerData?.content || null
-      }
+      initialOfferContent={offerData?.content || null}
       otherCandidates={otherCandidates}
-      isEditing
+      isEditing={Boolean(offerData)}
       onSave={handleSave}
-      onCancel={() =>
-        navigate(`/advertisement/job/${jobId}/offer-letter`)
-      }
+      onCancel={() => navigate(backTo)}
     />
   );
 }

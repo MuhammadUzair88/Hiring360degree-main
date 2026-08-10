@@ -187,7 +187,7 @@ export const getAdvertisementById = async (req, res) => {
     const advertisement = await Advertisement.findOne({
       _id: advertisementId,
       organizationId,
-    });
+    }).lean();
 
     if (!advertisement) {
       return res.status(404).json({
@@ -196,17 +196,34 @@ export const getAdvertisementById = async (req, res) => {
       });
     }
 
-    const pamphlet = await AIPamphlet.findOne({
-      advertisementId,
-    });
+    const [pamphlet, applicantsCount] = await Promise.all([
+      AIPamphlet.findOne({
+        advertisementId,
+      }).lean(),
+
+      Application.countDocuments({
+        organizationId,
+        advertisementId,
+      }),
+    ]);
 
     return res.status(200).json({
       success: true,
-      advertisement,
+
+      advertisement: {
+        ...advertisement,
+        applicantsCount,
+      },
+
       pamphlet,
+
+      applicantsCount,
     });
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Get Advertisement By ID Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -214,7 +231,6 @@ export const getAdvertisementById = async (req, res) => {
     });
   }
 };
-
 //Organization Advertisements
 
 export const getOrganizationAdvertisements = async (req, res) => {

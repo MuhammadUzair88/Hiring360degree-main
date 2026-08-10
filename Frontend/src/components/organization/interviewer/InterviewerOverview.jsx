@@ -8,6 +8,7 @@ import { getInterviewers, subscribe, removeInterviewer, loadInterviewers } from 
 import PageHeader from "./PageHeader";
 import { pageContent } from "./interviewerdata";
 import { useToast } from "../../../context/ToastContext";
+import { useAuth } from "../../../context/AuthContext";
 
 export default function InterviewerOverview() {
   const toast = useToast();
@@ -17,6 +18,7 @@ export default function InterviewerOverview() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [page, setPage] = useState(1);
+  const {organization} = useAuth()
 
   // null = closed, "add" = create mode, an interviewer id = edit mode
   const [formTarget, setFormTarget] = useState(null);
@@ -79,6 +81,7 @@ export default function InterviewerOverview() {
       <PageHeader
         pageLabel={pageContent.interviewer.label}
         subtitle={pageContent.interviewer.subtitle}
+        organization={organization}
       />
       <InterviewerStatsOverview interviewers={interviewers} />
 

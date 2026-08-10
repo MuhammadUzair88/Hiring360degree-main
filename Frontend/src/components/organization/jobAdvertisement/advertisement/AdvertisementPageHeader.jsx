@@ -3,14 +3,6 @@ import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { advertisementPageHeader } from "./data";
 
-/**
- * Page title + subtitle + "Post New Job" CTA.
- * Title = organizationData.name + advertisementPageHeader.title
- * (org name comes from backend, page label is static per page).
- * Title/subtitle classes are identical to DashboardGreetingBanner's —
- * both map to index.css's page-heading (`text-3xl`) and default
- * body-copy (`text-base leading-6`) tokens.
- */
 export default function AdvertisementPageHeader({
   organization,
   title = advertisementPageHeader.title,

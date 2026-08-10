@@ -1,3 +1,4 @@
+
 // controllers/interviewController.js
 
 import { ScheduledInterview } from "../models/interviewModel.js";
@@ -7,9 +8,52 @@ import { Interviewer } from "../models/interviewerModel.js";
 import { InterviewPipeline } from "../models/interviewPipelineModel.js";
 import { Advertisement } from "../models/advertisementModel.js";
 import { Organization } from "../models/organizationModel.js";
-import { chatClient, streamClient, createStreamUser, createVideoCall, admitParticipant, removeParticipant, endCall,muteParticipant } from "../utils/stream.js";
+import { chatClient, streamClient, createStreamUser, createVideoCall, ensureInterviewChatChannel, admitParticipant, removeParticipant, endCall, muteParticipant } from "../utils/stream.js";
 import { sendInterviewEmails } from "../middlewares/email-middleware.js";
 import mongoose from "mongoose";
+
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_24_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function parseDateOnlyToUtc(value) {
+  if (typeof value !== "string" || !DATE_ONLY_RE.test(value)) return null;
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function toDateOnlyString(value) {
+  if (!value) return "";
+  if (typeof value === "string" && DATE_ONLY_RE.test(value)) return value;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  // IMPORTANT: use UTC/ISO for a date-only Mongo value. Using local
+  // getDate()/getMonth() can turn Aug 10 into Aug 9 on servers west of UTC.
+  return date.toISOString().slice(0, 10);
+}
+
+function parseLocalScheduleDateTime(dateValue, timeValue) {
+  const date = parseDateOnlyToUtc(dateValue);
+  if (!date || typeof timeValue !== "string" || !TIME_24_RE.test(timeValue)) {
+    return null;
+  }
+
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const [hours, minutes] = timeValue.split(":").map(Number);
+  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+}
 
 // =========================
 // GET CALL DETAILS (PUBLIC)
@@ -22,7 +66,9 @@ export const getCallDetails = async (req, res) => {
       .populate({
         path: "applicationId",
         select: "candidateId advertisementId",
-      });
+        populate: { path: "candidateId", select: "name email" },
+      })
+      .populate({ path: "interviewerId", select: "name email" });
 
     if (!interview) {
       return res.status(404).json({
@@ -32,13 +78,14 @@ export const getCallDetails = async (req, res) => {
     }
 
     const application = interview.applicationId;
+    const candidate = application?.candidateId;
+    const interviewer = interview.interviewerId;
 
-    // Get round name
     let roundName = "Interview Round";
     try {
       const pipeline = await InterviewPipeline.findOne({
         advertisementId: application?.advertisementId,
-      });
+      }).lean();
       if (pipeline?.rounds?.[interview.roundIndex]) {
         roundName = pipeline.rounds[interview.roundIndex];
       }
@@ -46,29 +93,78 @@ export const getCallDetails = async (req, res) => {
       console.warn("Could not fetch pipeline:", err.message);
     }
 
-    // Use stored IDs, with fallback for legacy records
-    const streamHostId = interview.streamHostId || `interviewer_${interview.interviewerId}`;
-    const streamCandidateId = interview.streamCandidateId || `candidate_${application?.candidateId}`;
+    const streamHostId =
+      interview.streamHostId || `interviewer_${interviewer?._id || interview.interviewerId}`;
+    const streamCandidateId =
+      interview.streamCandidateId || `candidate_${candidate?._id || candidate || "candidate"}`;
 
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
+      scheduleId: String(interview._id),
+      interviewId: String(interview._id),
+      applicationId: String(application?._id || ""),
+      roundIndex: interview.roundIndex,
+      roundName,
+      status: interview.status,
+      feedbackEvaluation: interview.feedbackEvaluation,
+      callId: interview.callId,
       streamHostId,
       streamCandidateId,
-      roundName,
-      callId: interview.callId,
+      candidateName: candidate?.name || "Candidate",
+      interviewerName: interviewer?.name || "Interviewer",
       meetingLinkCandidate: interview.meetingLinkCandidate,
       meetingLinkInterviewer: interview.meetingLinkInterviewer,
-
     });
   } catch (error) {
-    console.error("❌ getCallDetails error:", error);
-    res.status(500).json({
+    console.error("getCallDetails error:", error);
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
+
+// =========================
+// MARK CALL STARTED
+// =========================
+export const markInterviewCallStarted = async (req, res) => {
+  try {
+    const { callId } = req.params;
+
+    const interview = await ScheduledInterview.findOne({ callId });
+    if (!interview) {
+      return res.status(404).json({
+        success: false,
+        message: "Interview not found",
+      });
+    }
+
+    if (["Completed", "Cancelled", "No Show"].includes(interview.status)) {
+      return res.status(409).json({
+        success: false,
+        message: "This interview is no longer active",
+      });
+    }
+
+    if (interview.status === "Scheduled") {
+      interview.status = "Ongoing";
+      await interview.save();
+    }
+
+    return res.status(200).json({
+      success: true,
+      scheduleId: String(interview._id),
+      status: interview.status,
+    });
+  } catch (error) {
+    console.error("markInterviewCallStarted error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to mark interview as ongoing",
+    });
+  }
+};
+
 // =========================
 // CREATE INTERVIEW
 // =========================
@@ -93,11 +189,18 @@ export const createInterview = async (req, res) => {
       });
     }
 
-    // Validate Future Date/Time
-    const scheduledDateTime = new Date(`${interviewDate}T${interviewTime}:00`);
-    const currentDateTime = new Date();
+    // Validate the date/time without converting the date-only value through
+    // the server's local timezone. The date is stored at UTC midnight below.
+    const normalizedInterviewDate = parseDateOnlyToUtc(interviewDate);
+    const scheduledDateTime = parseLocalScheduleDateTime(interviewDate, interviewTime);
+    if (!normalizedInterviewDate || !scheduledDateTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid interview date or time. Use YYYY-MM-DD and HH:mm.",
+      });
+    }
 
-    if (scheduledDateTime <= currentDateTime) {
+    if (scheduledDateTime <= new Date()) {
       return res.status(400).json({
         success: false,
         message: "Cannot schedule interview in the past. Please select a future date and time.",
@@ -124,7 +227,7 @@ export const createInterview = async (req, res) => {
 
     const existingInterviews = await ScheduledInterview.find({
       interviewerId: new mongoose.Types.ObjectId(interviewerId),
-      interviewDate: interviewDate,
+      interviewDate: normalizedInterviewDate,
       status: { $ne: "Cancelled" },
     });
 
@@ -148,7 +251,7 @@ export const createInterview = async (req, res) => {
     // Check Candidate Availability
     const candidateInterviews = await ScheduledInterview.find({
       applicationId: new mongoose.Types.ObjectId(applicationId),
-      interviewDate: interviewDate,
+      interviewDate: normalizedInterviewDate,
       status: { $ne: "Cancelled" },
     });
 
@@ -251,64 +354,52 @@ export const createInterview = async (req, res) => {
     console.log("  Host ID:", interviewerStreamId);
     console.log("  Candidate ID:", candidateStreamId);
 
-    // Create Stream Users and Video Call
-    try {
-      // Upsert users
-      await createStreamUser({
-        id: interviewerStreamId,
-        name: interviewer.name,
-        email: interviewer.email,
-        role: "admin",
-      });
+    // Stream resources are part of scheduling success. If this fails we do NOT
+    // save a broken interview record or email unusable meeting links.
+    await createStreamUser({
+      id: interviewerStreamId,
+      name: interviewer.name,
+      role: "user",
+    });
 
-      await createStreamUser({
-        id: candidateStreamId,
-        name: candidate.name,
-        email: candidate.email,
-        role: "user",
-      });
+    await createStreamUser({
+      id: candidateStreamId,
+      name: candidate.name,
+      role: "user",
+    });
 
-      // Create video call with waiting room
-      await createVideoCall(
-        callId,
-        interviewerStreamId,
-        interviewer.name,
-        candidateStreamId,
-        candidate.name,
-        {
-          applicationId: application._id.toString(),
-          roundName,
-          interviewDate,
-          interviewTime,
-          organizationId: organizationId.toString(),
-        }
-      );
+    await createVideoCall(
+      callId,
+      interviewerStreamId,
+      interviewer.name,
+      candidateStreamId,
+      candidate.name,
+      {
+        applicationId: application._id.toString(),
+        roundName,
+        interviewDate,
+        interviewTime,
+        organizationId: organizationId.toString(),
+      }
+    );
 
-      // Create chat channel
-      const channel = chatClient.channel("messaging", callId, {
-        name: `${roundName} Chat`,
-        created_by_id: interviewerStreamId,
-        members: [interviewerStreamId, candidateStreamId],
-      });
-      await channel.create();
+    await ensureInterviewChatChannel({
+      callId,
+      hostId: interviewerStreamId,
+      participantId: candidateStreamId,
+      roundName,
+    });
 
-      console.log("✅ Stream setup complete");
-    } catch (streamError) {
-      console.error("❌ Stream API Error:", streamError);
-      // Continue even if Stream fails
-    }
-
-    // Create Join Links
-    const meetingLinkCandidate = `${process.env.CLIENT_URL}/interview/${callId}?role=candidate&name=${encodeURIComponent(candidate.name)}`;
-    const meetingLinkInterviewer = `${process.env.CLIENT_URL}/interview/${callId}?role=interviewer&name=${encodeURIComponent(interviewer.name)}`;
-    const meetingLink = `${process.env.CLIENT_URL}/interview/${callId}`;
+    // Identity comes from the scheduled interview on the backend, not query-string names.
+    const meetingLinkCandidate = `${process.env.CLIENT_URL}/interview/${callId}?role=candidate`;
+    const meetingLinkInterviewer = `${process.env.CLIENT_URL}/interview/${callId}?role=interviewer`;
 
     // Save Interview with Stream IDs
     const interview = await ScheduledInterview.create({
       applicationId,
       interviewerId,
       roundIndex,
-      interviewDate,
+      interviewDate: normalizedInterviewDate,
       interviewTime,
       meetingLinkCandidate,
       meetingLinkInterviewer,
@@ -333,7 +424,7 @@ export const createInterview = async (req, res) => {
 
     // Send Emails
     try {
-      const scheduledAt = new Date(`${interviewDate}T${interviewTime}:00`);
+      const scheduledAt = scheduledDateTime;
       await sendInterviewEmails({
         candidateEmail: candidate.email,
         candidateName: candidate.name,
@@ -398,13 +489,32 @@ export const checkInterviewerAvailability = async (req, res) => {
       });
     }
 
+    const normalizedInterviewDate = parseDateOnlyToUtc(date);
+    if (!normalizedInterviewDate || !TIME_24_RE.test(time)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date or time. Use YYYY-MM-DD and HH:mm.",
+      });
+    }
+
+    const interviewerExists = await Interviewer.exists({
+      _id: interviewerId,
+      organizationId: req.organizationId,
+    });
+    if (!interviewerExists) {
+      return res.status(404).json({
+        success: false,
+        message: "Interviewer not found",
+      });
+    }
+
     const [hours, minutes] = time.split(":").map(Number);
     const interviewStartMinutes = hours * 60 + minutes;
     const interviewEndMinutes = interviewStartMinutes + 60;
 
     const query = {
       interviewerId: new mongoose.Types.ObjectId(interviewerId),
-      interviewDate: date,
+      interviewDate: normalizedInterviewDate,
       status: { $ne: "Cancelled" },
     };
 
@@ -459,155 +569,85 @@ export const getJobSchedules = async (req, res) => {
     const { advertisementId } = req.params;
     const organizationId = req.organizationId;
 
-    // ✅ Fetch ALL interviewers once and create a lookup map for names
-    const allInterviewers = await Interviewer.find({}).select("name email type");
-    const interviewerMap = {};
-    allInterviewers.forEach(int => {
-      interviewerMap[int._id.toString()] = int;
-    });
-
-    const schedules = await ScheduledInterview.find({})
-      .populate({
-        path: "applicationId",
-        populate: [
-          { path: "candidateId", select: "name email" },
-          { path: "advertisementId", select: "jobTitle" },
-        ],
-      })
-      .populate({
-        path: "interviewerId",
-        select: "name email type",
-      })
-      .sort({ interviewDate: -1 });
-
-    // Filter by advertisementId
-    const filteredSchedules = schedules.filter(
-      s => s.applicationId?.advertisementId?._id?.toString() === advertisementId
-    );
-
-    // Get pipeline for round names
-    const pipeline = await InterviewPipeline.findOne({
+    // Scope schedules through this organization's applications instead of
+    // loading every schedule/interviewer in the database and filtering in JS.
+    const applications = await Application.find({
       advertisementId,
       organizationId,
-    });
+    })
+      .select("_id")
+      .lean();
 
-    const mappedSchedules = [];
+    const applicationIds = applications.map((application) => application._id);
 
-    for (const sch of filteredSchedules) {
+    const [pipeline, schedules] = await Promise.all([
+      InterviewPipeline.findOne({ advertisementId, organizationId }).lean(),
+      ScheduledInterview.find({ applicationId: { $in: applicationIds } })
+        .populate({
+          path: "applicationId",
+          select: "_id candidateId advertisementId roundResults status currentRound",
+          populate: { path: "candidateId", select: "name email phone" },
+        })
+        .populate({
+          path: "interviewerId",
+          select: "name email type organizationId",
+        })
+        .sort({ interviewDate: 1, interviewTime: 1 })
+        .lean(),
+    ]);
+
+    const mappedSchedules = schedules.map((sch) => {
       const application = sch.applicationId;
-      
-      // ✅ Get interviewer name - try populated first, then lookup map, then fallback
-      let interviewerName = "Unknown Interviewer";
-      let interviewerEmail = "";
-      let interviewerType = "";
-      
-      if (sch.interviewerId) {
-        // If populated object with name
-        if (typeof sch.interviewerId === 'object' && sch.interviewerId !== null && sch.interviewerId.name) {
-          interviewerName = sch.interviewerId.name;
-          interviewerEmail = sch.interviewerId.email || "";
-          interviewerType = sch.interviewerId.type || "";
-        } 
-        // If it has _id (populated but maybe missing name)
-        else if (sch.interviewerId._id) {
-          const idStr = sch.interviewerId._id.toString();
-          const found = interviewerMap[idStr];
-          if (found) {
-            interviewerName = found.name;
-            interviewerEmail = found.email || "";
-            interviewerType = found.type || "";
+      const interviewer = sch.interviewerId;
+      const roundName = pipeline?.rounds?.[sch.roundIndex] || "Interview Round";
+
+      let roundResult = application?.roundResults?.[sch.roundIndex] || null;
+      if (!roundResult && roundName && Array.isArray(application?.roundResults)) {
+        roundResult = application.roundResults.find((result) => result?.roundName === roundName) || null;
+      }
+
+      const feedback = roundResult
+        ? {
+            ratings: {
+              technicalSkills: roundResult.evaluation?.technicalSkills || 0,
+              problemSolving: roundResult.evaluation?.problemSolving || 0,
+              communication: roundResult.evaluation?.communication || 0,
+              behavioralSkills: roundResult.evaluation?.behavioralSkills || 0,
+              culturalFit: roundResult.evaluation?.culturalFit || 0,
+            },
+            coreStrengths: roundResult.coreStrengths || "",
+            areasForImprovement: roundResult.areasForImprovement || "",
+            recommendation: roundResult.recommendation || "",
+            finalComments: roundResult.finalComments || "",
+            status: roundResult.status || "Pending",
           }
-        }
-        // If it's just a string/ObjectId
-        else {
-          const idStr = sch.interviewerId.toString();
-          const found = interviewerMap[idStr];
-          if (found) {
-            interviewerName = found.name;
-            interviewerEmail = found.email || "";
-            interviewerType = found.type || "";
-          }
-        }
-      }
+        : null;
 
-      // ✅ Get round name
-      let roundName = "Interview Round";
-      if (pipeline?.rounds?.[sch.roundIndex]) {
-        roundName = pipeline.rounds[sch.roundIndex];
-      }
-
-      // ✅ Extract round result and feedback
-      let roundResult = null;
-      let feedback = null;
-
-      if (application?.roundResults && application.roundResults.length > 0) {
-        // Try to get by index first
-        if (application.roundResults[sch.roundIndex]) {
-          roundResult = application.roundResults[sch.roundIndex];
-        } 
-        // If not found by index, try to find by roundName
-        else {
-          const targetRoundName = pipeline?.rounds?.[sch.roundIndex];
-          if (targetRoundName) {
-            roundResult = application.roundResults.find(r => r?.roundName === targetRoundName);
-          }
-        }
-
-        // Build feedback object if evaluation exists
-        if (roundResult) {
-        feedback = {
-          ratings: {
-            technicalSkills: roundResult.evaluation?.technicalSkills || 0,
-            problemSolving: roundResult.evaluation?.problemSolving || 0,
-            communication: roundResult.evaluation?.communication || 0,
-            behavioralSkills: roundResult.evaluation?.behavioralSkills || 0,
-            culturalFit: roundResult.evaluation?.culturalFit || 0,
-          },
-          coreStrengths: roundResult.coreStrengths || "",
-          areasForImprovement: roundResult.areasForImprovement || "",
-          recommendation: roundResult.recommendation || "",
-          finalComments: roundResult.finalComments || "",
-          status: roundResult.status || "Pending",
-        };
-      }
-      }
-
-      // Format date
-      const dateObj = new Date(sch.interviewDate);
-      const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-
-      // Format time
-      let timeStr = sch.interviewTime;
-      if (timeStr && timeStr.includes('T')) {
-        const timeDate = new Date(timeStr);
-        timeStr = `${String(timeDate.getHours()).padStart(2, '0')}:${String(timeDate.getMinutes()).padStart(2, '0')}`;
-      }
-
-      mappedSchedules.push({
+      return {
         _id: sch._id,
         callId: sch.callId,
         applicationId: {
+          _id: application?._id || null,
           candidateId: application?.candidateId || null,
         },
-        interviewerId: sch.interviewerId?._id || sch.interviewerId,
+        interviewerId: interviewer?._id || null,
         interviewerDetails: {
-          _id: sch.interviewerId?._id || sch.interviewerId,
-          name: interviewerName,
-          email: interviewerEmail,
-          type: interviewerType,
+          _id: interviewer?._id || null,
+          name: interviewer?.name || "Unknown Interviewer",
+          email: interviewer?.email || "",
+          type: interviewer?.type || "",
         },
-        interviewDate: dateStr,
-        interviewTime: timeStr,
+        interviewDate: toDateOnlyString(sch.interviewDate),
+        interviewTime: sch.interviewTime || "",
         roundIndex: sch.roundIndex,
-        roundName: roundName,
+        roundName,
         status: sch.status,
         feedbackEvaluation: sch.feedbackEvaluation || "Pending",
         candidateName: application?.candidateId?.name || "Unknown Candidate",
         candidateEmail: application?.candidateId?.email || "",
-        feedback: feedback,
-      });
-    }
-
+        feedback,
+      };
+    });
 
     return res.status(200).json({
       success: true,
@@ -617,7 +657,7 @@ export const getJobSchedules = async (req, res) => {
     console.error("Get Job Schedules Error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Failed to load interview schedules",
     });
   }
 };
@@ -643,6 +683,13 @@ export const resendInterviewEmail = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Interview schedule not found",
+      });
+    }
+
+    if (interview.status === "Cancelled") {
+      return res.status(400).json({
+        success: false,
+        message: "This interview has been cancelled and cannot be resent.",
       });
     }
 
@@ -696,12 +743,15 @@ export const resendInterviewEmail = async (req, res) => {
     });
     const roundName = pipeline?.rounds?.[interview.roundIndex] || "Interview Round";
 
-    const dateStr = new Date(interview.interviewDate).toISOString().split("T")[0];
-    const scheduledAt = new Date(`${dateStr}T${interview.interviewTime}:00`);
+    const dateStr = toDateOnlyString(interview.interviewDate);
+    const scheduledAt = parseLocalScheduleDateTime(dateStr, interview.interviewTime);
+    if (!scheduledAt) {
+      return res.status(400).json({ success: false, message: "Interview has an invalid stored date/time." });
+    }
     const callId = interview.callId;
 
-    const meetingLinkCandidate = `${process.env.CLIENT_URL}/interview/${callId}?role=candidate&name=${encodeURIComponent(candidate.name)}`;
-    const meetingLinkInterviewer = `${process.env.CLIENT_URL}/interview/${callId}?role=interviewer&name=${encodeURIComponent(interviewer.name)}`;
+    const meetingLinkCandidate = `${process.env.CLIENT_URL}/interview/${callId}?role=candidate`;
+    const meetingLinkInterviewer = `${process.env.CLIENT_URL}/interview/${callId}?role=interviewer`;
 
     const emailResult = await sendInterviewEmails({
       candidateEmail: candidate.email,
@@ -769,7 +819,21 @@ export const updateInterview = async (req, res) => {
       });
     }
 
-    const scheduledDateTime = new Date(`${interviewDate}T${interviewTime}:00`);
+    if (["Completed", "Cancelled"].includes(interview.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `A ${interview.status.toLowerCase()} interview cannot be rescheduled.`,
+      });
+    }
+
+    const normalizedInterviewDate = parseDateOnlyToUtc(interviewDate);
+    const scheduledDateTime = parseLocalScheduleDateTime(interviewDate, interviewTime);
+    if (!normalizedInterviewDate || !scheduledDateTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid interview date or time. Use YYYY-MM-DD and HH:mm.",
+      });
+    }
     if (scheduledDateTime <= new Date()) {
       return res.status(400).json({ success: false, message: "Cannot schedule interview in the past" });
     }
@@ -782,7 +846,7 @@ export const updateInterview = async (req, res) => {
     const existingInterviews = await ScheduledInterview.find({
       _id: { $ne: scheduleId },
       interviewerId: new mongoose.Types.ObjectId(interviewerId),
-      interviewDate: interviewDate,
+      interviewDate: normalizedInterviewDate,
       status: { $ne: "Cancelled" },
     });
 
@@ -806,7 +870,7 @@ export const updateInterview = async (req, res) => {
     const candidateInterviews = await ScheduledInterview.find({
       _id: { $ne: scheduleId },
       applicationId: interview.applicationId,
-      interviewDate: interviewDate,
+      interviewDate: normalizedInterviewDate,
       status: { $ne: "Cancelled" },
     });
 
@@ -842,8 +906,7 @@ export const updateInterview = async (req, res) => {
         await createStreamUser({
           id: newStreamHostId,
           name: interviewer.name,
-          email: interviewer.email,
-          role: "admin", 
+          role: "user",
         });
 
         const call = streamClient.video.call("default", interview.callId);
@@ -858,29 +921,39 @@ export const updateInterview = async (req, res) => {
           ],
         });
         
-        // Remove old host
+        const channel = chatClient.channel("messaging", interview.callId);
+        await channel.addMembers([newStreamHostId]);
+
+        // Removal of the previous host is cleanup; failure here should not stop
+        // the newly assigned interviewer from using the repaired call.
         if (oldStreamHostId) {
           try {
             await call.updateCallMembers({
               remove_members: [oldStreamHostId],
             });
+            await channel.removeMembers([oldStreamHostId]);
           } catch (removeErr) {
             console.warn("Could not remove old host:", removeErr.message);
           }
         }
         
-        console.log("✅ Stream call members updated");
+        console.log("✅ Stream call/chat host updated");
       } catch (streamError) {
         console.error("❌ Failed to update Stream call members:", streamError);
+        return res.status(502).json({
+          success: false,
+          message: "The interviewer was not changed because the live interview room could not be updated.",
+        });
       }
     }
 
     // Update the interview
     interview.interviewerId = interviewerId;
-    interview.interviewDate = interviewDate;
+    interview.interviewDate = normalizedInterviewDate;
     interview.interviewTime = interviewTime;
     interview.status = "Scheduled";
     interview.streamHostId = newStreamHostId; // STORE the new host ID
+    interview.meetingLinkInterviewer = `${process.env.CLIENT_URL}/interview/${interview.callId}?role=interviewer`;
     await interview.save();
 
     // Update application round results
@@ -907,6 +980,72 @@ export const updateInterview = async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: error.message || "Failed to update interview" 
+    });
+  }
+};
+
+// =========================
+// CANCEL INTERVIEW SCHEDULE
+// =========================
+export const cancelInterview = async (req, res) => {
+  try {
+    const { scheduleId } = req.params;
+    const organizationId = req.organizationId;
+
+    const interview = await ScheduledInterview.findById(scheduleId);
+    if (!interview) {
+      return res.status(404).json({ success: false, message: "Interview not found" });
+    }
+
+    const application = await Application.findOne({
+      _id: interview.applicationId,
+      organizationId,
+    });
+    if (!application) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized to cancel this interview",
+      });
+    }
+
+    if (interview.status === "Cancelled") {
+      return res.status(200).json({
+        success: true,
+        message: "Interview is already cancelled",
+        interview,
+      });
+    }
+
+    if (interview.status === "Completed") {
+      return res.status(400).json({
+        success: false,
+        message: "A completed interview cannot be cancelled",
+      });
+    }
+
+    // Best effort: invalidate the associated Stream room too. The database
+    // cancellation still succeeds if Stream says the room is already ended.
+    if (interview.callId) {
+      try {
+        await endCall(interview.callId);
+      } catch (streamError) {
+        console.warn("Could not end Stream call while cancelling:", streamError.message);
+      }
+    }
+
+    interview.status = "Cancelled";
+    await interview.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Interview cancelled successfully",
+      interview,
+    });
+  } catch (error) {
+    console.error("❌ cancelInterview error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to cancel interview",
     });
   }
 };
@@ -984,54 +1123,14 @@ export const revokePermissions = async (req, res) => {
 };
 
 
-// Add this to the BOTTOM of controllers/interviewController.js
-
-// =========================
-// ADMIN CALL ACTION (MUTE/REMOVE)
-// =========================
-
-export const performAdminCallAction = async (req, res) => {
-  try {
-    const { callId, userId, action } = req.params;
-    
-    // Get the call instance from the Server SDK
-    const call = streamClient.video.call("default", callId);
-
-    if (action === 'mute') {
-      // SERVER SDK MUTE SYNTAX: 
-      // We revoke the 'send-audio' permission to effectively mute them
-      await call.updateUserPermissions({
-        user_id: userId,
-        revoke_permissions: ['send-audio'],
-      });
-      return res.status(200).json({ success: true, message: "Participant muted" });
-    } 
-    
-    else if (action === 'remove') {
-      // SERVER SDK REMOVE SYNTAX:
-      await call.updateCallMembers({
-        remove_members: [userId],
-      });
-      return res.status(200).json({ success: true, message: "Participant removed" });
-    }
-
-    return res.status(400).json({ success: false, message: "Invalid action" });
-  } catch (error) {
-    console.error(`❌ Admin action '${req.params.action}' failed:`, error);
-    res.status(500).json({ success: false, message: error.message });
-
-  }}
 // =========================
 // END CALL - ONLY UPDATES INTERVIEW STATUS
 // =========================
 export const endInterviewCall = async (req, res) => {
   try {
     const { callId } = req.params;
-    
-    console.log("🔚 Ending interview call:", callId);
-    
-    // Find the interview
-    const interview = await ScheduledInterview.findOne({ callId });
+
+    const interview = req.callInterview || await ScheduledInterview.findOne({ callId });
 
     if (!interview) {
       return res.status(404).json({
@@ -1040,34 +1139,32 @@ export const endInterviewCall = async (req, res) => {
       });
     }
 
-    // End the Stream call
     try {
       await endCall(callId);
-      console.log("✅ Stream call ended");
     } catch (streamError) {
-      console.warn("⚠️ Stream call end error (may already be ended):", streamError.message);
+      // If Stream already considers the call ended we still complete the DB
+      // record, so the interviewer can submit feedback consistently.
+      console.warn("Stream call end warning:", streamError.message);
     }
-    
-    // ONLY UPDATE INTERVIEW STATUS TO COMPLETED
+
     interview.status = "Completed";
+    interview.feedbackEvaluation = "Pending";
     await interview.save();
-    
-    console.log("✅ Interview status updated to Completed:", callId);
-    
-    res.status(200).json({
+
+    return res.status(200).json({
       success: true,
       message: "Interview session ended successfully",
-      interviewId: interview._id,
-      status: "Completed",
+      interviewId: String(interview._id),
+      scheduleId: String(interview._id),
+      status: interview.status,
+      feedbackEvaluation: interview.feedbackEvaluation,
     });
-    
   } catch (error) {
-    console.error("❌ End call error:", error);
-    res.status(500).json({
+    console.error("End call error:", error);
+    return res.status(500).json({
       success: false,
       message: error.message || "Failed to end interview",
     });
-
   }
 }; 
 

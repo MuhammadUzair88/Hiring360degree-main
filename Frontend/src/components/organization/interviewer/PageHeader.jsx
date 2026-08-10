@@ -1,11 +1,11 @@
 // PageHeader.jsx
 import React from "react";
-import { organizationData } from "./interviewerdata";
+// import { organizationData } from "./interviewerdata";
 
 export default function PageHeader({
   pageLabel,
   subtitle,
-  organization = organizationData,
+  organization,
 })
 {
   

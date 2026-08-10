@@ -1,10 +1,6 @@
 import React from "react";
 import { LogOut, Loader2 } from "lucide-react";
 
-/**
- * "End interview session?" confirmation - host only. Same copy, same
- * pending/loading state on the confirm button as the original screen.
- */
 export default function EndSessionModal({ isEndingSession, onCancel, onConfirm }) {
   return (
     <div className="app-drawer-backdrop flex items-center justify-center p-4">
@@ -12,9 +8,15 @@ export default function EndSessionModal({ isEndingSession, onCancel, onConfirm }
         <div className="w-16 h-16 rounded-full bg-danger-50 flex items-center justify-center mx-auto mb-4">
           <LogOut size={30} className="text-danger-600" />
         </div>
-        <h3 className="text-h6 font-semibold text-slate-900 mb-2">End Interview Session?</h3>
-        <p className="text-sm text-neutral-600 mb-1">This will end the interview for both you and the candidate.</p>
-        <p className="text-xs text-neutral-500 mb-6">Both participants will be redirected to the home page.</p>
+        <h3 className="text-h6 font-semibold text-slate-900 mb-2">
+          End Interview Session?
+        </h3>
+        <p className="text-sm text-neutral-600 mb-1">
+          This ends the call for both participants.
+        </p>
+        <p className="text-xs text-neutral-500 mb-6">
+          You will continue directly to the feedback page. The candidate will leave the interview room.
+        </p>
         <div className="flex gap-3">
           <button
             type="button"

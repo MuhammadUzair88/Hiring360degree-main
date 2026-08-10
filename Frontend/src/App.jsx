@@ -94,7 +94,7 @@ function App() {
             element={<OfferLetter />}
           />
           <Route
-            path="/advertisement/job/:jobId/offer-letter/:applicationId/edit"
+            path="/advertisement/job/:id/offer-letter/:applicationId/edit"
             element={<EditOfferLetter />}
           />
         </Route>

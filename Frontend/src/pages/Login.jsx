@@ -1,15 +1,23 @@
+
 import React, { useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
+  BriefcaseBusiness,
+  Building2,
   Check,
   Eye,
   EyeOff,
   ImagePlus,
+  Loader2,
   LockKeyhole,
   Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { validateOrgAuthForm } from "../utils/validators";
@@ -26,40 +34,170 @@ const INITIAL_FORM_DATA = {
   logo: "",
 };
 
-const inputClass =
-  "h-12 w-full rounded-2xl border border-secondary-300 bg-secondary-50 px-4 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 hover:border-primary-300 focus:border-primary-600 focus:ring-4 focus:ring-primary-100";
+const inputClass = `
+  h-12 w-full rounded-xl
+  border border-secondary-300
+  bg-white
+  px-4
+  text-sm text-gray-900
+  outline-none
+  transition-all duration-200
+  placeholder:text-gray-400
+  hover:border-primary-300
+  focus:border-primary-600
+  focus:ring-4 focus:ring-primary-100
+`;
 
-function Field({ label, children, hint }) {
+function Field({ label, error, hint, children }) {
   return (
-    <label className="block space-y-2">
-      <span className="block text-sm font-medium text-gray-700">{label}</span>
+    <label className="block">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-gray-700">{label}</span>
+
+        {hint && (
+          <span className="text-[11px] text-gray-400">
+            {hint}
+          </span>
+        )}
+      </div>
+
       {children}
-      {hint ? <span className="block text-xs text-gray-400">{hint}</span> : null}
+
+      {error && (
+        <p className="mt-1.5 text-xs font-medium text-red-500">
+          {error}
+        </p>
+      )}
     </label>
   );
 }
 
+function BrandPanel() {
+  return (
+    <aside className="relative hidden min-h-screen overflow-hidden bg-primary-900 lg:flex lg:flex-col">
+      {/* Decorative background */}
+      <div className="absolute inset-0">
+        <div className="absolute -left-40 -top-40 h-[420px] w-[420px] rounded-full bg-primary-600/30 blur-3xl" />
+        <div className="absolute -bottom-48 right-0 h-[480px] w-[480px] rounded-full bg-primary-500/20 blur-3xl" />
+
+        <div
+          className="
+            absolute inset-0 opacity-[0.07]
+            [background-image:linear-gradient(rgba(255,255,255,.55)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.55)_1px,transparent_1px)]
+            [background-size:42px_42px]
+          "
+        />
+      </div>
+
+      <div className="relative z-10 flex h-full min-h-screen flex-col px-10 py-9 xl:px-14">
+        <Link
+          to="/"
+          className="w-fit rounded-xl bg-white px-4 py-3 shadow-lg shadow-black/10 transition hover:-translate-y-0.5"
+        >
+          <img
+            src="/logofull.svg"
+            alt="Hiring360"
+            className="h-9 w-auto object-contain"
+          />
+        </Link>
+
+        <div className="my-auto max-w-xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-medium text-primary-50 backdrop-blur">
+            <Sparkles size={14} />
+            Modern recruitment, one workspace
+          </div>
+
+          <h1 className="mt-7 max-w-xl text-4xl font-semibold leading-[1.12] tracking-tight text-white xl:text-[52px]">
+            Build better teams with a clearer hiring process.
+          </h1>
+
+          <p className="mt-5 max-w-lg text-[15px] leading-7 text-primary-100">
+            Manage candidates, interviewers, interviews, evaluations and offers
+            from one professional recruitment workspace.
+          </p>
+
+          <div className="mt-10 grid gap-4">
+            {[
+              {
+                icon: BriefcaseBusiness,
+                title: "Centralized hiring",
+                text: "Keep every job and candidate in one place.",
+              },
+              {
+                icon: ShieldCheck,
+                title: "Structured access",
+                text: "Dedicated organization and interviewer workspaces.",
+              },
+              {
+                icon: Check,
+                title: "Faster decisions",
+                text: "Move candidates through your pipeline with clarity.",
+              },
+            ].map(({ icon: Icon, title, text }) => (
+              <div
+                key={title}
+                className="flex max-w-lg items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-sm"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white ring-1 ring-white/10">
+                  <Icon size={18} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    {title}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-primary-200">
+                    {text}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-primary-200">
+          <ShieldCheck size={14} />
+          Secure Hiring360 organization access
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 export default function Login() {
-  const location = useLocation();
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef(null);
+
   const { loginOrganization, registerOrganization } = useAuth();
   const toast = useToast();
 
   const isLoginView = location.pathname === "/login";
-  const [showPassword, setShowPassword] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [logoPreview, setLogoPreview] = useState("");
+
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [logoPreview, setLogoPreview] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = ({ target: { name, value } }) => {
-    setFormData((current) => ({ ...current, [name]: value }));
+    setFormData((current) => ({
+      ...current,
+      [name]: value,
+    }));
+
+    if (fieldErrors[name]) {
+      setFieldErrors((current) => ({
+        ...current,
+        [name]: "",
+      }));
+    }
   };
 
   const handleLogoChange = async (event) => {
     const file = event.target.files?.[0];
+
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
@@ -78,185 +216,189 @@ export default function Login() {
 
     try {
       const secureUrl = await uploadImageToCloudinary(file);
+
       setFormData((current) => ({
         ...current,
         logo: secureUrl,
       }));
+
       setLogoPreview(secureUrl);
-    } catch (error) {
+
+      toast.success("Logo uploaded.");
+    } catch {
       toast.error("Logo upload failed. Please try again.");
     } finally {
       setIsUploading(false);
+      event.target.value = "";
     }
   };
 
   const handleLoginSubmit = async (event) => {
     event.preventDefault();
 
-    const errors = validateOrgAuthForm({ isLoginView: true, formData });
+    const errors = validateOrgAuthForm({
+      isLoginView: true,
+      formData,
+    });
+
     setFieldErrors(errors);
+
     if (Object.keys(errors).length > 0) return;
 
     setIsSubmitting(true);
-    const result = await loginOrganization({
-      email: formData.email.trim(),
-      password: formData.password,
-    });
-    setIsSubmitting(false);
 
-    if (result.success) {
-      navigate("/");
-    } else {
-      toast.error(result.message);
+    try {
+      const result = await loginOrganization({
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+
+      if (result.success) {
+        const redirectTo =
+          location.state?.from?.pathname || "/";
+
+        navigate(redirectTo, {
+          replace: true,
+        });
+      } else {
+        toast.error(result.message);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleRegisterSubmit = async (event) => {
     event.preventDefault();
 
-    const errors = validateOrgAuthForm({ isLoginView: false, formData });
+    const errors = validateOrgAuthForm({
+      isLoginView: false,
+      formData,
+    });
+
     setFieldErrors(errors);
+
     if (Object.keys(errors).length > 0) return;
 
     setIsSubmitting(true);
-    const result = await registerOrganization({
-      ...formData,
-      email: formData.email.trim(),
-      name: formData.name.trim(),
-      phone: formData.phone.trim(),
-      website: formData.website.trim(),
-      location: formData.location.trim(),
-    });
-    setIsSubmitting(false);
 
-    if (result.success) {
-      toast.success("Workspace created successfully.");
-      navigate("/");
-    } else {
-      toast.error(result.message);
+    try {
+      const result = await registerOrganization({
+        ...formData,
+        email: formData.email.trim(),
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        website: formData.website.trim(),
+        location: formData.location.trim(),
+      });
+
+      if (result.success) {
+        toast.success("Organization workspace created.");
+        navigate("/", {
+          replace: true,
+        });
+      } else {
+        toast.error(result.message);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const submitDisabled = isSubmitting || isUploading;
 
   return (
-    <main className="min-h-screen overflow-hidden bg-secondary-100 font-sans text-gray-900">
-      <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[minmax(420px,0.9fr)_minmax(560px,1.1fr)]">
-        <aside className="relative hidden overflow-hidden bg-primary-800 px-12 py-10 text-secondary-50 lg:flex lg:flex-col xl:px-16">
-          <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,.18),transparent_28%),radial-gradient(circle_at_80%_70%,rgba(196,181,253,.35),transparent_34%)]" />
-          <div className="absolute -right-32 top-24 h-80 w-80 rounded-full border border-primary-500/40" />
-          <div className="absolute -right-16 top-40 h-56 w-56 rounded-full border border-primary-400/30" />
+    <main className="min-h-screen bg-secondary-100 font-sans text-gray-900">
+      <div className="grid min-h-screen lg:grid-cols-[0.92fr_1.08fr]">
+        <BrandPanel />
 
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            className="relative z-10 w-fit rounded-2xl bg-secondary-50 px-4 py-3 shadow-xl shadow-primary-900/20 transition hover:-translate-y-0.5"
-          >
-            <img
-              src="logofull.svg"
-              alt="Hiring360"
-              className="h-10 w-auto object-contain"
-            />
-          </button>
+        <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-8 lg:px-12">
+          {/* right-side decorations */}
+          <div className="pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full bg-primary-100/70 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-28 left-1/4 h-72 w-72 rounded-full bg-primary-50 blur-3xl" />
 
-          <div className="relative z-10 my-auto max-w-xl">
-            <span className="inline-flex items-center rounded-full border border-primary-400/40 bg-primary-700/70 px-4 py-2 text-xs text-primary-100 backdrop-blur">
-              Built for modern recruiting teams
-            </span>
-
-            <h1 className="mt-7 max-w-lg text-4xl leading-[1.12] text-secondary-50 xl:text-5xl">
-              Hiring that feels clear, fast, and human.
-            </h1>
-
-            <p className="mt-5 max-w-md text-base leading-7 text-primary-100">
-              Bring your team, candidates, and hiring decisions into one focused
-              workspace without unnecessary complexity.
-            </p>
-
-            <div className="mt-10 grid max-w-md gap-4">
-              {[
-                "Shorter screening cycles",
-                "Better team collaboration",
-                "One place for every candidate",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-3">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary-50/10 ring-1 ring-secondary-50/20">
-                    <Check size={15} />
-                  </span>
-                  <span className="text-sm text-primary-50">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <p className="relative z-10 text-xs text-primary-200">
-            Secure access for your organization workspace.
-          </p>
-        </aside>
-
-        <section className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-8 lg:px-12 xl:px-20">
-          <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-primary-50 to-transparent lg:hidden" />
-
-          <div className="relative z-10 w-full max-w-[620px]">
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="mb-10 rounded-xl lg:hidden"
+          <div className="relative z-10 w-full max-w-[610px]">
+            {/* Mobile logo */}
+            <Link
+              to="/"
+              className="mb-9 block w-fit lg:hidden"
             >
               <img
                 src="/logofullbg.png"
                 alt="Hiring360"
-                className="h-12 w-auto object-contain"
+                className="h-11 w-auto object-contain"
               />
-            </button>
+            </Link>
 
-            <div className="mb-8 flex items-end justify-between gap-5">
-              <div>
-                <p className="mb-2 text-sm font-medium text-primary-700">
-                  {isLoginView ? "Welcome back" : "Create your workspace"}
-                </p>
-                <h2 className="text-3xl leading-tight text-gray-950 sm:text-4xl">
-                  {isLoginView ? "Sign in to continue" : "Start with Hiring360"}
-                </h2>
-                <p className="mt-3 max-w-lg text-sm leading-6 text-gray-500">
-                  {isLoginView
-                    ? "Use your organization account to access your hiring workspace."
-                    : "Set up your organization account and invite your team later."}
-                </p>
-              </div>
+            <div className="mb-7">
+              <p className="mb-2 text-sm font-semibold text-primary-700">
+                {isLoginView
+                  ? "Organization portal"
+                  : "New organization"}
+              </p>
+
+              <h2 className="text-3xl font-semibold tracking-tight text-gray-950 sm:text-4xl">
+                {isLoginView
+                  ? "Welcome back"
+                  : "Create your hiring workspace"}
+              </h2>
+
+              <p className="mt-3 max-w-xl text-sm leading-6 text-gray-500">
+                {isLoginView
+                  ? "Sign in to manage jobs, candidates, interviews and hiring decisions."
+                  : "Set up your organization profile and start managing your recruitment process."}
+              </p>
             </div>
 
-            <div className="mb-7 inline-flex rounded-full border border-secondary-300 bg-secondary-50 p-1 shadow-sm">
+            {/* Switch */}
+            <div className="mb-6 grid grid-cols-2 rounded-xl border border-secondary-300 bg-secondary-200/60 p-1">
               <button
                 type="button"
                 onClick={() => navigate("/login")}
-                className={`rounded-full px-5 py-2 text-sm transition ${
-                  isLoginView
-                    ? "bg-primary-800 text-secondary-50 shadow-sm"
-                    : "text-gray-500 hover:text-primary-800"
-                }`}
+                className={`
+                  rounded-lg px-4 py-2.5 text-sm font-medium transition
+                  ${
+                    isLoginView
+                      ? "bg-white text-primary-800 shadow-sm"
+                      : "text-gray-500 hover:text-gray-800"
+                  }
+                `}
               >
                 Sign in
               </button>
+
               <button
                 type="button"
                 onClick={() => navigate("/register")}
-                className={`rounded-full px-5 py-2 text-sm transition ${
-                  !isLoginView
-                    ? "bg-primary-800 text-secondary-50 shadow-sm"
-                    : "text-gray-500 hover:text-primary-800"
-                }`}
+                className={`
+                  rounded-lg px-4 py-2.5 text-sm font-medium transition
+                  ${
+                    !isLoginView
+                      ? "bg-white text-primary-800 shadow-sm"
+                      : "text-gray-500 hover:text-gray-800"
+                  }
+                `}
               >
                 Create account
               </button>
             </div>
 
-            <div className="rounded-[32px] border border-secondary-300 bg-secondary-50 p-5 shadow-[0_24px_70px_rgba(76,29,149,0.08)] sm:p-8">
+            <div className="rounded-3xl border border-secondary-300 bg-white p-5 shadow-[0_22px_60px_rgba(76,29,149,0.08)] sm:p-7">
               {isLoginView ? (
-                <form onSubmit={handleLoginSubmit} className="space-y-5">
-                  <Field label="Work email">
+                <form
+                  onSubmit={handleLoginSubmit}
+                  className="space-y-5"
+                >
+                  <Field
+                    label="Work email"
+                    error={fieldErrors.email}
+                  >
                     <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                      <Mail
+                        size={18}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                      />
+
                       <input
                         required
                         type="email"
@@ -268,14 +410,18 @@ export default function Login() {
                         placeholder="name@company.com"
                       />
                     </div>
-                    {fieldErrors.email && (
-                      <span className="mt-1 block text-xs text-red-500">{fieldErrors.email}</span>
-                    )}
                   </Field>
 
-                  <Field label="Password">
+                  <Field
+                    label="Password"
+                    error={fieldErrors.password}
+                  >
                     <div className="relative">
-                      <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                      <LockKeyhole
+                        size={18}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                      />
+
                       <input
                         required
                         type={showPassword ? "text" : "password"}
@@ -286,81 +432,157 @@ export default function Login() {
                         className={`${inputClass} px-11`}
                         placeholder="Enter your password"
                       />
+
                       <button
                         type="button"
-                        onClick={() => setShowPassword((value) => !value)}
-                        className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-gray-400 transition hover:bg-secondary-200 hover:text-primary-800"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        onClick={() =>
+                          setShowPassword((current) => !current)
+                        }
+                        className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition hover:bg-secondary-100 hover:text-primary-800"
+                        aria-label={
+                          showPassword
+                            ? "Hide password"
+                            : "Show password"
+                        }
                       >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {showPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
                       </button>
                     </div>
-                    {fieldErrors.password && (
-                      <span className="mt-1 block text-xs text-red-500">{fieldErrors.password}</span>
-                    )}
                   </Field>
 
                   <button
                     type="submit"
                     disabled={submitDisabled}
-                    className="group flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary-800 px-5 text-sm text-secondary-50 transition hover:bg-primary-900 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="
+                      group flex h-12 w-full items-center justify-center gap-2
+                      rounded-xl bg-primary-800 px-5
+                      text-sm font-semibold text-white
+                      shadow-lg shadow-primary-800/10
+                      transition
+                      hover:bg-primary-900
+                      disabled:cursor-not-allowed disabled:opacity-60
+                    "
                   >
-                    {isSubmitting ? "Signing in…" : "Continue to workspace"}
-                    {!isSubmitting && (
-                      <ArrowRight size={17} className="transition group-hover:translate-x-0.5" />
+                    {isSubmitting ? (
+                      <>
+                        <Loader2
+                          size={17}
+                          className="animate-spin"
+                        />
+                        Signing in…
+                      </>
+                    ) : (
+                      <>
+                        Continue to workspace
+                        <ArrowRight
+                          size={17}
+                          className="transition-transform group-hover:translate-x-0.5"
+                        />
+                      </>
                     )}
                   </button>
                 </form>
               ) : (
-                <form onSubmit={handleRegisterSubmit} className="space-y-5">
+                <form
+                  onSubmit={handleRegisterSubmit}
+                  className="space-y-5"
+                >
                   <div className="grid gap-5 sm:grid-cols-2">
-                    <Field label="Organization name">
-                      <input
-                        required
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        className={inputClass}
-                        placeholder="Acme Technologies"
-                      />
+                    <Field
+                      label="Organization name"
+                      error={fieldErrors.name}
+                    >
+                      <div className="relative">
+                        <Building2
+                          size={17}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
+
+                        <input
+                          required
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          className={`${inputClass} pl-11`}
+                          placeholder="Acme Technologies"
+                        />
+                      </div>
                     </Field>
 
-                    <Field label="Business phone">
-                      <input
-                        required
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className={inputClass}
-                        placeholder="+92 300 1234567"
-                      />
-                    </Field>
+                    <Field
+                      label="Business phone"
+                      error={fieldErrors.phone}
+                    >
+                      <div className="relative">
+                        <Phone
+                          size={17}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
 
-                    <Field label="Industry">
+                        <input
+                          required
+                          type="tel"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          className={`${inputClass} pl-11`}
+                          placeholder="+92 300 1234567"
+                        />
+                      </div>
+                    </Field>
+                  </div>
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <Field
+                      label="Industry"
+                      error={fieldErrors.industry}
+                    >
                       <select
                         name="industry"
                         value={formData.industry}
                         onChange={handleInputChange}
                         className={`${inputClass} cursor-pointer`}
                       >
-                        <option value="tech">Technology</option>
-                        <option value="startup">Startup</option>
+                        <option value="tech">
+                          Technology
+                        </option>
+
+                        <option value="startup">
+                          Startup
+                        </option>
                       </select>
                     </Field>
 
-                    <Field label="Location">
-                      <input
-                        name="location"
-                        value={formData.location}
-                        onChange={handleInputChange}
-                        className={inputClass}
-                        placeholder="Karachi, Pakistan"
-                      />
+                    <Field
+                      label="Location"
+                      error={fieldErrors.location}
+                    >
+                      <div className="relative">
+                        <MapPin
+                          size={17}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
+
+                        <input
+                          name="location"
+                          value={formData.location}
+                          onChange={handleInputChange}
+                          className={`${inputClass} pl-11`}
+                          placeholder="Karachi, Pakistan"
+                        />
+                      </div>
                     </Field>
                   </div>
 
-                  <Field label="Website">
+                  <Field
+                    label="Website"
+                    error={fieldErrors.website}
+                    hint="Optional"
+                  >
                     <input
                       type="url"
                       name="website"
@@ -372,19 +594,33 @@ export default function Login() {
                   </Field>
 
                   <div className="grid gap-5 sm:grid-cols-2">
-                    <Field label="Admin email">
-                      <input
-                        required
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className={inputClass}
-                        placeholder="admin@company.com"
-                      />
+                    <Field
+                      label="Admin email"
+                      error={fieldErrors.email}
+                    >
+                      <div className="relative">
+                        <Mail
+                          size={17}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
+
+                        <input
+                          required
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          className={`${inputClass} pl-11`}
+                          placeholder="admin@company.com"
+                        />
+                      </div>
                     </Field>
 
-                    <Field label="Password" hint="Use at least 8 characters">
+                    <Field
+                      label="Password"
+                      error={fieldErrors.password}
+                      hint="8+ characters"
+                    >
                       <div className="relative">
                         <input
                           required
@@ -396,19 +632,29 @@ export default function Login() {
                           className={`${inputClass} pr-11`}
                           placeholder="Create password"
                         />
+
                         <button
                           type="button"
-                          onClick={() => setShowPassword((value) => !value)}
-                          className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-gray-400 transition hover:bg-secondary-200 hover:text-primary-800"
-                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          onClick={() =>
+                            setShowPassword((current) => !current)
+                          }
+                          className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition hover:bg-secondary-100 hover:text-primary-800"
                         >
-                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          {showPassword ? (
+                            <EyeOff size={18} />
+                          ) : (
+                            <Eye size={18} />
+                          )}
                         </button>
                       </div>
                     </Field>
                   </div>
 
-                  <Field label="Organization logo">
+                  <Field
+                    label="Organization logo"
+                    error={fieldErrors.logo}
+                    hint="PNG, JPG or WebP · max 5 MB"
+                  >
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -419,55 +665,103 @@ export default function Login() {
 
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
-                      className="flex w-full items-center gap-4 rounded-2xl border border-dashed border-primary-300 bg-primary-50/60 p-4 text-left transition hover:border-primary-500 hover:bg-primary-50 disabled:opacity-60"
+                      onClick={() =>
+                        fileInputRef.current?.click()
+                      }
+                      className="
+                        flex w-full items-center gap-4
+                        rounded-xl border border-dashed border-primary-300
+                        bg-primary-50/50 p-4 text-left
+                        transition
+                        hover:border-primary-500 hover:bg-primary-50
+                        disabled:cursor-not-allowed disabled:opacity-60
+                      "
                     >
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-secondary-50 text-primary-700 ring-1 ring-primary-200">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-primary-200 bg-white text-primary-700">
                         {logoPreview ? (
-                          <img src={logoPreview} alt="Logo preview" className="h-full w-full object-cover" />
+                          <img
+                            src={logoPreview}
+                            alt="Organization logo"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : isUploading ? (
+                          <Loader2
+                            size={19}
+                            className="animate-spin"
+                          />
                         ) : (
-                          <ImagePlus size={20} />
+                          <ImagePlus size={19} />
                         )}
-                      </span>
-                      <span>
-                        <span className="block text-sm text-gray-800">
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">
                           {isUploading
                             ? "Uploading logo…"
                             : logoPreview
-                              ? "Logo uploaded"
-                              : "Upload organization logo"}
-                        </span>
-                        <span className="mt-1 block text-xs text-gray-400">
-                          PNG, JPG or WebP · Maximum 5 MB
-                        </span>
-                      </span>
+                              ? "Organization logo uploaded"
+                              : "Choose organization logo"}
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-400">
+                          Click to select an image
+                        </p>
+                      </div>
                     </button>
                   </Field>
 
                   <button
                     type="submit"
                     disabled={submitDisabled}
-                    className="group flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary-800 px-5 text-sm text-secondary-50 transition hover:bg-primary-900 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="
+                      group flex h-12 w-full items-center justify-center gap-2
+                      rounded-xl bg-primary-800
+                      text-sm font-semibold text-white
+                      shadow-lg shadow-primary-800/10
+                      transition
+                      hover:bg-primary-900
+                      disabled:cursor-not-allowed disabled:opacity-60
+                    "
                   >
-                    {isSubmitting ? "Creating workspace…" : "Create organization"}
-                    {!isSubmitting && (
-                      <ArrowRight size={17} className="transition group-hover:translate-x-0.5" />
+                    {isSubmitting ? (
+                      <>
+                        <Loader2
+                          size={17}
+                          className="animate-spin"
+                        />
+                        Creating workspace…
+                      </>
+                    ) : (
+                      <>
+                        Create organization
+                        <ArrowRight
+                          size={17}
+                          className="transition-transform group-hover:translate-x-0.5"
+                        />
+                      </>
                     )}
                   </button>
                 </form>
               )}
             </div>
 
-            <p className="mt-6 text-center text-xs text-gray-400">
-              Protected organization access · Hiring360
-            </p>
-            <p className="mt-2 text-center text-xs text-gray-400">
-              Interviewer?{" "}
-              <Link to="/interviewers/login" className="font-medium text-primary-700 hover:underline">
-                Sign in to your interviewer workspace
-              </Link>
-            </p>
+            <div className="mt-6 flex flex-col items-center gap-2 text-center text-xs text-gray-400">
+              <p className="flex items-center gap-1.5">
+                <ShieldCheck size={13} />
+                Secure access powered by Hiring360
+              </p>
+
+              <p>
+                Interviewer?{" "}
+                <Link
+                  to="/interviewers/login"
+                  className="font-semibold text-primary-700 transition hover:text-primary-900 hover:underline"
+                >
+                  Open interviewer workspace
+                </Link>
+              </p>
+            </div>
           </div>
         </section>
       </div>

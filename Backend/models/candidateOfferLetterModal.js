@@ -1,8 +1,15 @@
-// models/offerLetterModel.js
-// One document per candidate/application. Content here overrides the
-// OfferLetterSettings defaults for that specific candidate.
+
 
 import mongoose from "mongoose";
+
+const additionalFieldSchema = new mongoose.Schema(
+  {
+    id: { type: String, default: "" },
+    label: { type: String, default: "", trim: true },
+    value: { type: String, default: "" },
+  },
+  { _id: false }
+);
 
 const offerLetterSchema = new mongoose.Schema(
   {
@@ -10,27 +17,23 @@ const offerLetterSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Application",
       required: true,
-      unique: true, // one offer letter per application
+      unique: true,
     },
-
     candidateId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Candidate",
       required: true,
     },
-
     advertisementId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Advertisement",
       required: true,
     },
-
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Organization",
       required: true,
     },
-
     templateSettingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "OfferLetterSettings",
@@ -38,29 +41,39 @@ const offerLetterSchema = new mongoose.Schema(
     },
 
     content: {
+      paragraph1: { type: String, default: "" },
+      paragraph2: { type: String, default: "" },
+      paragraph3: { type: String, default: "" },
+      fieldsSectionLabel: { type: String, default: "" },
 
-      paragraph1: { type: String, default: "" }, // Opening & Role
-      paragraph2: { type: String, default: "" }, // Terms & Compensation
-      paragraph3: { type: String, default: "" }, // Closing
+      // Keep Date for compatibility with existing MongoDB documents.
+      // API responses normalize these to YYYY-MM-DD before reaching the UI.
+      joiningDate: { type: Date, default: null },
+      endingDate: { type: Date, default: null },
 
-      joiningDate: { type: Date },
-      endingDate: { type: Date }, // only set for internships/contract roles
+      additionalFields: {
+        type: [additionalFieldSchema],
+        default: [],
+      },
+    },
 
-      additionalFields: [
-        {
-          label: { type: String },
-          value: { type: String },
-        },
-      ],
+    // Hosted PNG generated from the exact personalized A4 preview.
+    offerLetterUrl: {
+      type: String,
+      default: "",
+      trim: true,
     },
 
     status: {
       type: String,
-      enum: ["Pending","Notified"],
+      enum: ["Pending", "Notified"],
       default: "Pending",
     },
 
-
+    notifiedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
