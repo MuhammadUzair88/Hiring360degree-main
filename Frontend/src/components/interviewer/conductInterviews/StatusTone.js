@@ -1,5 +1,3 @@
-
-
 import { Clock, Video, CheckCircle2, AlertCircle, CalendarRange } from "lucide-react";
 
 export const STATUS_TONE = {
@@ -26,6 +24,14 @@ export const STATUS_TONE = {
     dot: "bg-primary-700",
     solid: "bg-primary-700",
     iconBadge: "bg-primary-100 text-primary-800",
+  },
+  Cancelled: {
+    label: "Cancelled",
+    icon: AlertCircle,
+    badge: "bg-red-50 text-red-700 outline-red-200",
+    dot: "bg-red-500",
+    solid: "bg-red-600",
+    iconBadge: "bg-red-50 text-red-700",
   },
   "No Show": {
     label: "No Show",

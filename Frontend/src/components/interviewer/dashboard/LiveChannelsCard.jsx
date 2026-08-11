@@ -1,9 +1,9 @@
 import React from "react";
 import { ExternalLink, Radio } from "lucide-react";
-import { liveInterviews as defaultLiveInterviews } from "./data";
+import { formatInterviewTime } from "../../../utils/interviewFormatting";
 
 /** Sidebar card listing interviews that are live right now, with a one-click join. */
-export default function LiveChannelsCard({ interviews = defaultLiveInterviews, onJoin }) {
+export default function LiveChannelsCard({ interviews = [], onJoin, loading = false }) {
   const handleJoin = (interview) => {
     if (onJoin) {
       onJoin(interview);
@@ -24,7 +24,11 @@ export default function LiveChannelsCard({ interviews = defaultLiveInterviews, o
       </div>
 
       <div className="p-4 space-y-3 flex-1 overflow-y-auto">
-        {interviews.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-full text-center py-10">
+            <p className="text-zinc-600 text-xs">Checking live interview channels…</p>
+          </div>
+        ) : interviews.length > 0 ? (
           interviews.map((item) => (
             <div
               key={item.scheduleId}
@@ -34,7 +38,7 @@ export default function LiveChannelsCard({ interviews = defaultLiveInterviews, o
                 <h4 className="text-slate-900 text-xs font-semibold">{item.candidateName}</h4>
                 <p className="text-primary-800 text-[11px] font-semibold">{item.jobTitle}</p>
                 <p className="text-zinc-600 text-[10px] font-medium mt-1">
-                  {item.interviewTime} • {item.roundName}
+                  {formatInterviewTime(item.interviewTime)} • {item.roundName}
                 </p>
               </div>
               <button

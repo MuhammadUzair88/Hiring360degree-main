@@ -131,8 +131,26 @@ export default function CandidateIntakeOverview({ jobId: jobIdProp }) {
     try {
       const data = await applicationService.analyzeResume(candidate.id);
       if (data.application) {
-        const updated = mapApplicationToCandidate(data.application);
-        setCandidates((prev) => prev.map((item) => (item.id === candidate.id ? updated : item)));
+        const mapped = mapApplicationToCandidate(data.application);
+
+        // The analyze endpoint used to return an unpopulated candidateId,
+        // which temporarily changed the UI name to "Unknown candidate" until
+        // a full refresh. Preserve identity/resume from the already-loaded row
+        // if a deployment returns a partial application object.
+        const updated = {
+          ...candidate,
+          ...mapped,
+          name:
+            mapped.name && mapped.name !== "Unknown candidate"
+              ? mapped.name
+              : candidate.name,
+          email: mapped.email || candidate.email,
+          resume: mapped.resume?.url ? mapped.resume : candidate.resume,
+        };
+
+        setCandidates((prev) =>
+          prev.map((item) => (item.id === candidate.id ? updated : item))
+        );
       } else {
         // Some deployments only return the aiResult — refetch the row to stay in sync.
         await loadCandidates();

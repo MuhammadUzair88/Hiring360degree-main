@@ -1,3 +1,4 @@
+
 // src/components/interviewerDashboard/conductInterview/CandidateDetailOverview.jsx
 
 import React, { useState } from "react";
@@ -26,7 +27,7 @@ export default function CandidateDetailOverview({ candidate, backTo, onJoinInter
   const [activeTab, setActiveTab] = useState("resume");
 
   const isCompleted = candidate.status === "Completed";
-  const canJoin = !isCompleted && Boolean(candidate.meetingLink);
+  const canJoin = ["Scheduled", "Ongoing"].includes(candidate.status) && Boolean(candidate.meetingLink);
   const roundLabel = `${candidate.assignedStage} · Round ${candidate.roundIndex + 1} of ${candidate.totalRounds}`;
 
   return (
@@ -37,6 +38,8 @@ export default function CandidateDetailOverview({ candidate, backTo, onJoinInter
         canJoin={canJoin}
         onJoinInterview={onJoinInterview}
         backTo={backTo}
+        activeResource={activeTab}
+        onSelectResource={setActiveTab}
       />
 
       <div className="flex-1 bg-secondary-100 flex flex-col lg:flex-row">

@@ -1,14 +1,22 @@
+
 import React from "react";
 import StatMetricCard from "../dashboard/StatMetricCard";
 import { TONE_BADGE_CLASS } from "../dashboard/statusTone";
-import { evaluationStats } from "./data";
 
-/**
- * Responsive grid of the 3 evaluation KPI cards.
- * - below 640px: 1 column (stacked)
- * - 640px+: all 3 in a row
- */
-export default function EvaluationStatsOverview({ stats = evaluationStats }) {
+export default function EvaluationStatsOverview({ stats = [], loading = false }) {
+  if (loading) {
+    return (
+      <div className="self-stretch grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {Array.from({ length: 3 }, (_, index) => (
+          <div
+            key={index}
+            className="h-28 rounded-xl bg-secondary-50/80 outline outline-1 outline-offset-[-1px] outline-secondary-300 animate-pulse"
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="self-stretch grid grid-cols-1 sm:grid-cols-3 gap-4">
       {stats.map((stat) => (

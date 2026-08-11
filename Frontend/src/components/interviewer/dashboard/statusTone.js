@@ -27,6 +27,7 @@ const STATUS_TONE_MAP = {
   Ongoing: "strong",
   Completed: "soft",
   "No Show": "medium",
+  Cancelled: "medium",
 };
 
 /** Resolves any interview/candidate status string to a tone key. */

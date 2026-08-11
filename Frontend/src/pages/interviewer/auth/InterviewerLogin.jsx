@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   Link,
@@ -101,10 +100,10 @@ export default function InterviewerLogin() {
         });
 
       if (result.success) {
-        const redirectTo =
-          location.state?.from
-            ?.pathname ||
-          "/interviewers/dashboard";
+        const from = location.state?.from;
+        const redirectTo = from?.pathname
+          ? `${from.pathname}${from.search || ""}${from.hash || ""}`
+          : "/interviewers/dashboard";
 
         navigate(redirectTo, {
           replace: true,

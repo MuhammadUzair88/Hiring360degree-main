@@ -91,6 +91,7 @@ export function useRoundsLogic(jobId) {
   // -- Reference data -------------------------------------------------------
   const [interviewers, setInterviewers] = useState([]);
   const [roundPool, setRoundPool] = useState([]);
+  const [roundPoolCounts, setRoundPoolCounts] = useState([]);
   const [isLoadingPool, setIsLoadingPool] = useState(true);
   const [scheduledInterviews, setScheduledInterviews] = useState([]);
   // candidateId -> "Offered" | "Rejected". Derived from decisions already
@@ -143,13 +144,43 @@ export function useRoundsLogic(jobId) {
     }
   }, [jobId, toast]);
 
+  // Load the unscheduled pool size for every configured round. The tab badge
+  // later combines this with scheduled/review candidates so it reflects the
+  // real number of candidates associated with each round instead of always 0.
+  const loadRoundPoolCounts = useCallback(async (roundCount) => {
+    if (!jobId || !roundCount) {
+      setRoundPoolCounts([]);
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      Array.from({ length: roundCount }, (_, roundIndex) =>
+        interviewService.getRoundCandidates(jobId, roundIndex)
+      )
+    );
+
+    setRoundPoolCounts(
+      results.map((result) =>
+        result.status === "fulfilled"
+          ? (result.value?.candidates || []).length
+          : 0
+      )
+    );
+  }, [jobId]);
+
   const loadRoundPool = useCallback(
     async (roundIndex) => {
       if (!jobId || rounds.length === 0) return;
       setIsLoadingPool(true);
       try {
         const data = await interviewService.getRoundCandidates(jobId, roundIndex);
-        setRoundPool((data.candidates || []).map(mapRoundCandidate));
+        const candidates = data.candidates || [];
+        setRoundPool(candidates.map(mapRoundCandidate));
+        setRoundPoolCounts((previous) => {
+          const next = [...previous];
+          next[roundIndex] = candidates.length;
+          return next;
+        });
       } catch (error) {
         // A 404 here just means the pipeline isn't saved yet — not an error worth toasting.
         setRoundPool([]);
@@ -183,6 +214,7 @@ export function useRoundsLogic(jobId) {
         setRounds(fetchedRounds);
         setIsConfigured(fetchedRounds.length > 0);
         setInterviewers((interviewerData.interviewers || []).map(mapInterviewer));
+        await loadRoundPoolCounts(fetchedRounds.length);
       } catch (error) {
         if (isActive) toast.error(extractErrorMessage(error, "Failed to load the interview pipeline."));
       } finally {
@@ -215,7 +247,21 @@ export function useRoundsLogic(jobId) {
   const activeRoundPool = roundPool.filter(
     (candidate) => !candidateOutcomes[candidate.id]
   );
-  const poolCounts = rounds.map(() => null); // per-round counts aren't fetched up front; only the active round's pool is loaded
+  const poolCounts = rounds.map((_, roundIndex) => {
+    const scheduledIds = new Set(
+      scheduledInterviews
+        .filter(
+          (item) =>
+            item.roundIndex === roundIndex &&
+            item.status !== "Cancelled"
+        )
+        .map((item) =>
+          String(item.applicationId || item.candidateId || item.id)
+        )
+    );
+
+    return Number(roundPoolCounts[roundIndex] || 0) + scheduledIds.size;
+  });
 
   const activeRoundSchedules = scheduledInterviews.filter((item) => item.roundIndex === activeRoundIndex);
   // const upcomingInterviews = activeRoundSchedules.filter((item) => !isInterviewFinished(item));
@@ -251,6 +297,7 @@ const reviewInterviews = activeRoundSchedules.filter(
       setRounds(cleaned);
       setIsConfigured(true);
       setActiveRoundIndex(0);
+      await loadRoundPoolCounts(cleaned.length);
     } catch (error) {
       toast.error(extractErrorMessage(error, "Failed to save the interview pipeline."));
     }
@@ -325,7 +372,11 @@ const reviewInterviews = activeRoundSchedules.filter(
         interviewDate: date,
         interviewTime: normalizedTime,
       });
-      await Promise.all([loadSchedules(), loadRoundPool(activeRoundIndex)]);
+      await Promise.all([
+        loadSchedules(),
+        loadRoundPool(activeRoundIndex),
+        loadRoundPoolCounts(rounds.length),
+      ]);
       resetFormFields();
       setSelectedCandidateId(null);
       toast.success(`Interview scheduled with ${candidate.name}.`);
@@ -393,7 +444,10 @@ const reviewInterviews = activeRoundSchedules.filter(
     if (!schedule) return;
     try {
       const data = await interviewService.decideRoundOutcome(scheduleId, { decision: "accept" });
-      await loadSchedules();
+      await Promise.all([
+        loadSchedules(),
+        loadRoundPoolCounts(rounds.length),
+      ]);
       if (data.isOffered) {
         setCandidateOutcomes((prev) => ({ ...prev, [schedule.candidateId]: CANDIDATE_OUTCOME.OFFERED }));
         toast.success(`${schedule.candidateName} has cleared every round and is ready for an offer.`);
@@ -414,7 +468,10 @@ const reviewInterviews = activeRoundSchedules.filter(
     if (!schedule) return;
     try {
       await interviewService.decideRoundOutcome(scheduleId, { decision: "reject" });
-      await loadSchedules();
+      await Promise.all([
+        loadSchedules(),
+        loadRoundPoolCounts(rounds.length),
+      ]);
       setCandidateOutcomes((prev) => ({ ...prev, [schedule.candidateId]: CANDIDATE_OUTCOME.REJECTED }));
       toast.info(`${schedule.candidateName} has been rejected.`);
     } catch (error) {

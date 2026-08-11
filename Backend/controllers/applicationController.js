@@ -1,3 +1,4 @@
+
 // controllers/applicationController.js
 
 import mongoose from "mongoose";
@@ -104,27 +105,39 @@ export const analyzeApplicationResume = async (req, res) => {
     const { applicationId } = req.params;
     const organizationId = req.organizationId;
 
-    const application = await Application.findById(applicationId).select("+resumeText");
+    // Scope the lookup to the authenticated organization and populate the
+    // candidate immediately. This prevents the analyze response from briefly
+    // turning the candidate into "Unknown candidate" on the frontend.
+    const application = await Application.findOne({
+      _id: applicationId,
+      organizationId,
+    })
+      .select("+resumeText")
+      .populate("candidateId", "name email phone");
 
     if (!application) {
-      return res.status(404).json({ success: false, message: "Application not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Application not found or you are not authorized to analyze it",
+      });
     }
 
-    // if (application.organizationId.toString() !== organizationId?.toString()) {
-    //   console.log("MISMATCH:", {
-    //     applicationOrg: application.organizationId.toString(),
-    //     requestOrg: organizationId,
-    //   });
-    //   return res.status(403).json({ success: false, message: "You are not authorized to analyze this application" });
-    // }
+    const serializeApplication = () => {
+      const responseApplication = application.toObject();
+      delete responseApplication.resumeText;
+      return responseApplication;
+    };
 
-    // Avoid re-running if already completed, unless caller forces it
+    // Avoid re-running if already completed, unless caller forces it.
     const { force } = req.query;
-    if (application.aiResult?.analysisStatus === "completed" && force !== "true") {
+    if (
+      application.aiResult?.analysisStatus === "completed" &&
+      force !== "true"
+    ) {
       return res.status(200).json({
         success: true,
         message: "Analysis already completed. Pass ?force=true to re-run.",
-        application,
+        application: serializeApplication(),
       });
     }
 
@@ -135,7 +148,11 @@ export const analyzeApplicationResume = async (req, res) => {
       });
     }
 
-    const advertisement = await Advertisement.findById(application.advertisementId);
+    const advertisement = await Advertisement.findOne({
+      _id: application.advertisementId,
+      organizationId,
+    });
+
     if (!advertisement) {
       return res.status(404).json({
         success: false,
@@ -143,11 +160,10 @@ export const analyzeApplicationResume = async (req, res) => {
       });
     }
 
-    // Mark as pending before the (possibly slow) AI call
     application.aiResult.analysisStatus = "pending";
     await application.save();
 
-    logger.info('Starting resume analysis', {
+    logger.info("Starting resume analysis", {
       applicationId,
       advertisementId: advertisement._id,
     });
@@ -159,9 +175,14 @@ export const analyzeApplicationResume = async (req, res) => {
         ...aiResult,
         analysisStatus: "completed",
       };
+
       await application.save();
 
-      logger.info('Resume analysis complete', {
+      // save() can change population state depending on the Mongoose version;
+      // explicitly repopulate before returning the response.
+      await application.populate("candidateId", "name email phone");
+
+      logger.info("Resume analysis complete", {
         applicationId,
         score: aiResult.overallScore,
         aiEnhanced: aiResult.aiEnhanced,
@@ -169,7 +190,7 @@ export const analyzeApplicationResume = async (req, res) => {
     } catch (aiError) {
       application.aiResult.analysisStatus = "failed";
       await application.save();
-      logger.error('Resume analysis failed', aiError);
+      logger.error("Resume analysis failed", aiError);
 
       return res.status(502).json({
         success: false,
@@ -177,17 +198,13 @@ export const analyzeApplicationResume = async (req, res) => {
       });
     }
 
-    const responseApplication = application.toObject();
-    delete responseApplication.resumeText;
-
     return res.status(200).json({
       success: true,
       message: "Resume analysis completed.",
-      application: responseApplication,
+      application: serializeApplication(),
     });
-
   } catch (error) {
-    logger.error('Error in analyzeApplicationResume', error);
+    logger.error("Error in analyzeApplicationResume", error);
     return res.status(500).json({
       success: false,
       message: error.message,

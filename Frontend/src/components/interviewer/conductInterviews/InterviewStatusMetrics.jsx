@@ -3,7 +3,7 @@
 import React from "react";
 import InterviewMetricCard from "./InterviewMetricCard";
 import { STATUS_TONE, TOTAL_TONE } from "./StatusTone";
-import { STATUS } from "./data";
+import { STATUS } from "./constants";
 
 /**
  * The 4-tile row at the top of the page: Upcoming / Ongoing / Completed /

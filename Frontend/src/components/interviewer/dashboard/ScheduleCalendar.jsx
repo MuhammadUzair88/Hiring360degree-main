@@ -1,53 +1,68 @@
 import React, { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
-import { scheduleCalendarMonth } from "./data";
 
 const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-/** Builds a 42-cell (6-row) month grid, padded with the leading/trailing days of neighboring months. */
 function buildMonthGrid(year, monthIndex) {
   const firstWeekday = new Date(year, monthIndex, 1).getDay();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
   const daysInPrevMonth = new Date(year, monthIndex, 0).getDate();
 
   const cells = [];
+
   for (let i = firstWeekday - 1; i >= 0; i -= 1) {
     cells.push({ day: daysInPrevMonth - i, isCurrentMonth: false });
   }
+
   for (let day = 1; day <= daysInMonth; day += 1) {
     cells.push({ day, isCurrentMonth: true });
   }
+
   let nextDay = 1;
   while (cells.length < 42) {
     cells.push({ day: nextDay, isCurrentMonth: false });
     nextDay += 1;
   }
+
   return cells;
 }
 
-/**
- * Month calendar. Month navigation (prev/next) is local state; which
- * day is selected is controlled by the parent so DaySchedulePanel,
- * rendered alongside it, can read the same day.
- */
+function localDateKey(year, monthIndex, day) {
+  const month = String(monthIndex + 1).padStart(2, "0");
+  const date = String(day).padStart(2, "0");
+  return `${year}-${month}-${date}`;
+}
+
+function selectedDateKey(value) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) return "";
+  return localDateKey(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
 export default function ScheduleCalendar({
-  selectedDay,
-  onSelectDay,
-  markedDays = [],
-  initialYear = scheduleCalendarMonth.year,
-  initialMonthIndex = scheduleCalendarMonth.monthIndex,
+  selectedDate,
+  onSelectDate,
+  markedDates = [],
+  initialYear = new Date().getFullYear(),
+  initialMonthIndex = new Date().getMonth(),
   title = "Schedule",
 }) {
-  const [viewDate, setViewDate] = useState(new Date(initialYear, initialMonthIndex, 1));
+  const [viewDate, setViewDate] = useState(
+    () => new Date(initialYear, initialMonthIndex, 1)
+  );
 
   const grid = useMemo(
     () => buildMonthGrid(viewDate.getFullYear(), viewDate.getMonth()),
     [viewDate]
   );
-  const markedSet = useMemo(() => new Set(markedDays), [markedDays]);
 
-  const goToPrevMonth = () => setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-  const goToNextMonth = () => setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  const markedSet = useMemo(() => new Set(markedDates.filter(Boolean)), [markedDates]);
+  const activeDateKey = selectedDateKey(selectedDate);
+
+  const goToPrevMonth = () =>
+    setViewDate((previous) => new Date(previous.getFullYear(), previous.getMonth() - 1, 1));
+
+  const goToNextMonth = () =>
+    setViewDate((previous) => new Date(previous.getFullYear(), previous.getMonth() + 1, 1));
 
   return (
     <div className="w-full min-w-0 p-4 sm:p-5 bg-secondary-50/80 rounded-xl outline outline-1 outline-offset-[-1px] outline-secondary-300 backdrop-blur-sm flex flex-col gap-3 sm:gap-4">
@@ -56,6 +71,7 @@ export default function ScheduleCalendar({
           <CalendarDays className="w-4 h-4 text-primary-800 shrink-0" />
           <span className="truncate">{title}</span>
         </span>
+
         <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
@@ -65,6 +81,7 @@ export default function ScheduleCalendar({
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
+
           <button
             type="button"
             onClick={goToNextMonth}
@@ -91,29 +108,33 @@ export default function ScheduleCalendar({
         ))}
 
         {grid.map((cell, index) => {
-          const isSelected = cell.isCurrentMonth && cell.day === selectedDay;
-          const isMarked = cell.isCurrentMonth && markedSet.has(cell.day);
+          const key = cell.isCurrentMonth
+            ? localDateKey(viewDate.getFullYear(), viewDate.getMonth(), cell.day)
+            : "";
+          const isSelected = Boolean(key && key === activeDateKey);
+          const isMarked = Boolean(key && markedSet.has(key));
 
           return (
             <button
-              key={index}
+              key={`${cell.isCurrentMonth ? "current" : "padding"}-${index}-${cell.day}`}
               type="button"
               disabled={!cell.isCurrentMonth}
               onClick={() => {
-                onSelectDay?.(cell.day);
-                if (cell.isCurrentMonth) {
-                  onSelectDate?.(new Date(viewDate.getFullYear(), viewDate.getMonth(), cell.day));
-                }
+                if (!cell.isCurrentMonth) return;
+                onSelectDate?.(
+                  new Date(viewDate.getFullYear(), viewDate.getMonth(), cell.day)
+                );
               }}
               className={`relative aspect-square min-w-0 flex items-center justify-center rounded-md sm:rounded-lg text-[11px] sm:text-xs font-semibold leading-none transition-colors ${
                 !cell.isCurrentMonth
                   ? "text-secondary-400 cursor-default"
                   : isSelected
-                  ? "bg-primary-800 text-secondary-50 shadow-sm"
-                  : "text-slate-900 hover:bg-primary-50"
+                    ? "bg-primary-800 text-secondary-50 shadow-sm"
+                    : "text-slate-900 hover:bg-primary-50"
               }`}
             >
               {cell.day}
+
               {isMarked && !isSelected && (
                 <span className="absolute bottom-1 w-1 h-1 rounded-full bg-primary-700" />
               )}

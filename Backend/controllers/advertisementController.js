@@ -3,6 +3,30 @@ import { Application } from "../models/applicationModel.js";
 import { AIPamphlet } from "../models/aiPumphletModel.js";
 import { savePamphlet } from "../services/pamphletService.js";
 
+const ADVERTISEMENT_FIELDS = [
+  "jobTitle",
+  "department",
+  "employmentType",
+  "workMode",
+  "location",
+  "salary",
+  "internshipPaid",
+  "internshipDuration",
+  "deadline",
+  "skills",
+  "description",
+  "status",
+  "experience",
+];
+
+function buildAdvertisementUpdate(body = {}) {
+  return ADVERTISEMENT_FIELDS.reduce((update, field) => {
+    if (Object.prototype.hasOwnProperty.call(body, field)) {
+      update[field] = body[field];
+    }
+    return update;
+  }, {});
+}
 
 export const addAdvertisement = async (req, res) => {
   try {
@@ -22,8 +46,6 @@ export const addAdvertisement = async (req, res) => {
       description,
       status,
       experience,
-
-      // Pamphlet Data
       generatedImageUrl,
       template,
       colors,
@@ -71,71 +93,25 @@ export const addAdvertisement = async (req, res) => {
       pamphlet,
     });
   } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    console.error("Add advertisement error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 export const editAdvertisement = async (req, res) => {
   try {
     const organizationId = req.organizationId;
     const { advertisementId } = req.params;
 
-    const {
-      
-      jobTitle,
-      department,
-      employmentType,
-      workMode,
-      location,
-      salary,
-      internshipPaid,
-      internshipDuration,
-      deadline,
-      skills,
-      description,
-      status,
-      experience,
+    // Only update fields the client actually sent. This makes small actions
+    // such as Close/Reopen safe and prevents undefined values from touching
+    // the rest of the advertisement.
+    const $set = buildAdvertisementUpdate(req.body);
 
-      // Pamphlet Data
-      generatedImageUrl,
-      template,
-      colors,
-      brandingPreference,
-      logoSize,
-      headingSize,
-    } = req.body;
-
-    // Update Advertisement
     const advertisement = await Advertisement.findOneAndUpdate(
-      {
-        _id: advertisementId,
-        organizationId,
-      },
-      {
-        jobTitle,
-        department,
-        employmentType,
-        workMode,
-        location,
-        salary,
-        internshipPaid,
-        internshipDuration,
-        deadline,
-        skills,
-        description,
-        status,
-        experience,
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
+      { _id: advertisementId, organizationId },
+      { $set },
+      { new: true, runValidators: true }
     );
 
     if (!advertisement) {
@@ -147,17 +123,16 @@ export const editAdvertisement = async (req, res) => {
 
     let pamphlet = null;
 
-    // Create or Update Pamphlet
-    if (generatedImageUrl) {
+    if (req.body.generatedImageUrl) {
       pamphlet = await savePamphlet({
         advertisementId: advertisement._id,
         organizationId,
-        generatedImageUrl,
-        template,
-        colors,
-        brandingPreference,
-        logoSize,
-        headingSize,
+        generatedImageUrl: req.body.generatedImageUrl,
+        template: req.body.template,
+        colors: req.body.colors,
+        brandingPreference: req.body.brandingPreference,
+        logoSize: req.body.logoSize,
+        headingSize: req.body.headingSize,
       });
     }
 
@@ -168,16 +143,10 @@ export const editAdvertisement = async (req, res) => {
       pamphlet,
     });
   } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    console.error("Edit advertisement error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
-
-// getAdvertisementbyId
 
 export const getAdvertisementById = async (req, res) => {
   try {
@@ -197,79 +166,61 @@ export const getAdvertisementById = async (req, res) => {
     }
 
     const [pamphlet, applicantsCount] = await Promise.all([
-      AIPamphlet.findOne({
-        advertisementId,
-      }).lean(),
-
-      Application.countDocuments({
-        organizationId,
-        advertisementId,
-      }),
+      AIPamphlet.findOne({ advertisementId, organizationId }).lean(),
+      Application.countDocuments({ organizationId, advertisementId }),
     ]);
 
     return res.status(200).json({
       success: true,
-
       advertisement: {
         ...advertisement,
         applicantsCount,
       },
-
       pamphlet,
-
       applicantsCount,
     });
   } catch (error) {
-    console.error(
-      "Get Advertisement By ID Error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    console.error("Get advertisement by ID error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
-//Organization Advertisements
 
 export const getOrganizationAdvertisements = async (req, res) => {
   try {
     const organizationId = req.organizationId;
 
-    const advertisements = await Advertisement.find({
-      organizationId,
-    })
+    const advertisements = await Advertisement.find({ organizationId })
       .sort({ createdAt: -1 })
       .lean();
 
-    const advertisementIds = advertisements.map((ad) => ad._id);
+    const advertisementIds = advertisements.map((advertisement) => advertisement._id);
 
-    const applicationCounts = await Application.aggregate([
-      {
-        $match: {
-          organizationId,
-          advertisementId: { $in: advertisementIds },
+    let countMap = new Map();
+
+    if (advertisementIds.length > 0) {
+      const applicationCounts = await Application.aggregate([
+        {
+          $match: {
+            organizationId,
+            advertisementId: { $in: advertisementIds },
+          },
         },
-      },
-      {
-        $group: {
-          _id: "$advertisementId",
-          count: { $sum: 1 },
+        {
+          $group: {
+            _id: "$advertisementId",
+            count: { $sum: 1 },
+          },
         },
-      },
-    ]);
+      ]);
 
-    const countMap = new Map(
-      applicationCounts.map((item) => [
-        item._id.toString(),
-        item.count,
-      ])
-    );
+      countMap = new Map(
+        applicationCounts.map((item) => [String(item._id), Number(item.count || 0)])
+      );
+    }
 
-    const advertisementsWithCounts = advertisements.map((ad) => ({
-      ...ad,
-      applicantsCount: countMap.get(ad._id.toString()) || 0,
+    const advertisementsWithCounts = advertisements.map((advertisement) => ({
+      ...advertisement,
+      applicantsCount: countMap.get(String(advertisement._id)) || 0,
     }));
 
     return res.status(200).json({
@@ -279,22 +230,16 @@ export const getOrganizationAdvertisements = async (req, res) => {
     });
   } catch (error) {
     console.error("Get advertisements error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
-
-// Delete Advertisements
 
 export const deleteAdvertisement = async (req, res) => {
   try {
     const organizationId = req.organizationId;
     const { advertisementId } = req.params;
 
-    const advertisement = await Advertisement.findOneAndDelete({
+    const advertisement = await Advertisement.findOne({
       _id: advertisementId,
       organizationId,
     });
@@ -306,20 +251,33 @@ export const deleteAdvertisement = async (req, res) => {
       });
     }
 
-    await AIPamphlet.findOneAndDelete({
+    // Do not create broken candidate/interview/offer history by hard-deleting
+    // a posting that already has applications. Closing it is the safe action.
+    const applicantsCount = await Application.countDocuments({
+      organizationId,
       advertisementId,
     });
+
+    if (applicantsCount > 0) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "This advertisement has candidate history and cannot be permanently deleted. Close the advertisement instead.",
+        applicantsCount,
+      });
+    }
+
+    await Promise.all([
+      Advertisement.deleteOne({ _id: advertisementId, organizationId }),
+      AIPamphlet.deleteMany({ advertisementId, organizationId }),
+    ]);
 
     return res.status(200).json({
       success: true,
       message: "Advertisement deleted successfully",
     });
   } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    console.error("Delete advertisement error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

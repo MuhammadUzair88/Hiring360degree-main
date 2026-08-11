@@ -1,6 +1,6 @@
 // routes/interviewerDashboardRoutes.js
 import express from "express";
-import { requireInterviewerAuth, requireInterviewerTokenOnly } from "../middlewares/interviewerAuth-middleware.js";
+import { requireInterviewerAuth } from "../middlewares/interviewerAuth-middleware.js";
 import {
   getDashboardStats,
   getDashboardChart,
@@ -16,36 +16,35 @@ import {
 
 const router = express.Router();
 
+// Every interviewer-workspace endpoint validates that the interviewer account
+// still exists and still belongs to the organization encoded in the token.
+router.use(requireInterviewerAuth);
 
-router.get("/organization", requireInterviewerAuth, getInterviewerOrganization);
+router.get("/organization", getInterviewerOrganization);
 
-// Profile endpoint - needs full DB check to return interviewer data
-router.get("/profile", requireInterviewerAuth, (req, res) => {
+router.get("/profile", (req, res) => {
   return res.status(200).json({
     success: true,
     interviewer: {
-      id: req.interviewer._id,
+      id: String(req.interviewer._id),
       name: req.interviewer.name,
       email: req.interviewer.email,
       type: req.interviewer.type,
-      organizationId: req.interviewer.organizationId,
+      organizationId: String(req.interviewer.organizationId),
     },
   });
 });
 
-// Dashboard stats - high traffic, use lighter middleware
-router.get("/dashboard/stats", requireInterviewerTokenOnly, getDashboardStats);
-router.get("/dashboard/chart", requireInterviewerTokenOnly, getDashboardChart);
-router.get("/dashboard/recent-interviews", requireInterviewerTokenOnly, getRecentInterviews);
-router.get("/dashboard/live-interviews", requireInterviewerTokenOnly, getLiveInterviews);
+router.get("/dashboard/stats", getDashboardStats);
+router.get("/dashboard/chart", getDashboardChart);
+router.get("/dashboard/recent-interviews", getRecentInterviews);
+router.get("/dashboard/live-interviews", getLiveInterviews);
 
-// Candidate management - needs full auth for security
-router.get("/candidates", requireInterviewerAuth, getAllCandidates);
-router.get("/candidates/:id", requireInterviewerAuth, getCandidateById);
+router.get("/candidates", getAllCandidates);
+router.get("/candidates/:id", getCandidateById);
 
-// Evaluations - needs full auth for data integrity
-router.get("/evaluations", requireInterviewerAuth, getAllEvaluations);
-router.get("/evaluations/:id", requireInterviewerAuth, getEvaluationById);
-router.post("/evaluations/:id", requireInterviewerAuth, submitEvaluation);
+router.get("/evaluations", getAllEvaluations);
+router.get("/evaluations/:id", getEvaluationById);
+router.post("/evaluations/:id", submitEvaluation);
 
 export default router;

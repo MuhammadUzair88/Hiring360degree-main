@@ -16,7 +16,7 @@
     "html-to-image": "^1.11.13",
     "lucide-react": "^1.25.0",
     "mammoth": "^1.12.0",
-    "pdfjs-dist": "^6.2.108",
+    "pdfjs-dist": "^5.4.296",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-icons": "^5.7.0",

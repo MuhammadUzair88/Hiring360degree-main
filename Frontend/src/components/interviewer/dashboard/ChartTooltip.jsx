@@ -1,14 +1,5 @@
 import React from "react";
 
-/**
- * Shared tooltip for every recharts graph on the dashboard. Themed
- * with the same card language as the rest of the app (secondary-50
- * surface, secondary-300 outline) so hovering any graph feels like
- * the same product.
- *
- * `formatLabel` lets a chart rename a series key (e.g. "scheduled" →
- * "Scheduled") without needing its own tooltip component.
- */
 export default function ChartTooltip({ active, payload, label, formatLabel }) {
   if (!active || !payload || !payload.length) return null;
 
