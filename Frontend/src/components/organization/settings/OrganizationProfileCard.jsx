@@ -1,13 +1,8 @@
+
 import React, { useRef } from "react";
 import { Pencil } from "lucide-react";
 import { organizationProfile } from "./settingdata";
 
-/**
- * Logo uploader card at the top of the Settings page. Purely
- * presentational for the file itself — `onReplace` receives the raw
- * File object so a parent (SettingsOverview) can preview it locally
- * and eventually upload it to the backend.
- */
 export default function OrganizationProfileCard({
   title = organizationProfile.title,
   subtitle = organizationProfile.subtitle,
@@ -22,34 +17,34 @@ export default function OrganizationProfileCard({
 
   const handleReplaceClick = () => fileInputRef.current?.click();
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
     if (file) onReplace(file);
-    e.target.value = "";
+    event.target.value = "";
   };
 
   return (
-    <div className="self-stretch p-6 sm:p-8 bg-white rounded-xl shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] outline outline-1 outline-offset-[-1px] outline-secondary-300/60 flex flex-col gap-4">
+    <div className="flex self-stretch flex-col gap-4 rounded-xl bg-white p-6 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] outline outline-1 outline-offset-[-1px] outline-secondary-300/60 sm:p-8">
       <div className="flex flex-col gap-1">
-        <h2 className="text-gray-900 text-xl font-semibold leading-7">{title}</h2>
-        <p className="text-neutral-600 text-base font-normal leading-6">{subtitle}</p>
+        <h2 className="text-xl font-semibold leading-7 text-gray-900">{title}</h2>
+        <p className="text-base font-normal leading-6 text-neutral-600">{subtitle}</p>
       </div>
 
-      <div className="pt-2 flex flex-col sm:flex-row items-center gap-6 sm:gap-10">
+      <div className="flex flex-col items-center gap-6 pt-2 sm:flex-row sm:gap-10">
         <div className="relative shrink-0">
-          <div className="w-32 h-32 bg-primary-50 rounded-xl outline outline-2 outline-offset-[-2px] outline-secondary-400 flex justify-center items-center overflow-hidden">
+          <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-xl bg-primary-50 outline outline-2 outline-offset-[-2px] outline-secondary-400">
             {logoUrl ? (
               <img
                 src={logoUrl}
                 alt="Organization logo"
-                className="w-full h-full object-cover"
+                className="h-full w-full object-contain p-2"
               />
             ) : (
-              <div className="p-4 flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-2 p-4">
                 {UploadIcon && (
-                  <UploadIcon className="w-7 h-7 text-neutral-600" strokeWidth={1.5} />
+                  <UploadIcon className="h-7 w-7 text-neutral-600" strokeWidth={1.5} />
                 )}
-                <span className="text-center text-neutral-600 text-[10px] font-medium leading-4">
+                <span className="text-center text-[10px] font-medium leading-4 text-neutral-600">
                   {acceptedFormats}
                 </span>
               </div>
@@ -60,30 +55,31 @@ export default function OrganizationProfileCard({
             type="button"
             onClick={handleReplaceClick}
             aria-label="Edit logo"
-            className="w-8 h-8 absolute -right-1 -bottom-1 bg-primary-700 rounded-full outline outline-2 outline-offset-[-2px] outline-white flex justify-center items-center hover:bg-primary-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2"
+            className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary-700 outline outline-2 outline-offset-[-2px] outline-white transition-colors hover:bg-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2"
           >
-            <Pencil className="w-3 h-3 text-white" strokeWidth={2.5} />
+            <Pencil className="h-3 w-3 text-white" strokeWidth={2.5} />
           </button>
         </div>
 
-        <div className="flex-1 w-full flex flex-col gap-4 items-center sm:items-start">
-          <div className="flex flex-wrap justify-center sm:justify-start gap-3">
+        <div className="flex w-full flex-1 flex-col items-center gap-4 sm:items-start">
+          <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
             <button
               type="button"
               onClick={handleReplaceClick}
-              className="px-6 py-2.5 bg-primary-800 rounded-lg text-violet-100 text-sm font-bold leading-5 hover:bg-primary-700 transition-colors"
+              className="rounded-lg bg-primary-800 px-6 py-2.5 text-sm font-bold leading-5 text-violet-100 transition-colors hover:bg-primary-700"
             >
-              Replace Logo
+              {logoUrl ? "Replace Logo" : "Upload Logo"}
             </button>
             <button
               type="button"
               onClick={onRemove}
-              className="px-6 py-2.5 rounded-lg outline outline-1 outline-offset-[-1px] outline-secondary-400 text-gray-900 text-sm font-bold leading-5 hover:bg-secondary-200 transition-colors"
+              disabled={!logoUrl}
+              className="rounded-lg px-6 py-2.5 text-sm font-bold leading-5 text-gray-900 outline outline-1 outline-offset-[-1px] outline-secondary-400 transition-colors hover:bg-secondary-200 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Remove
             </button>
           </div>
-          <p className="text-center sm:text-left text-neutral-600 text-sm font-normal leading-5">
+          <p className="text-center text-sm font-normal leading-5 text-neutral-600 sm:text-left">
             {recommendedText}
           </p>
         </div>
@@ -92,7 +88,7 @@ export default function OrganizationProfileCard({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png, image/svg+xml, image/jpeg"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml"
         onChange={handleFileChange}
         className="hidden"
       />

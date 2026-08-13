@@ -1,9 +1,11 @@
+
 // src/components/interviewerDashboard/conductInterview/InterviewStatusDrawer.jsx
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { X, Clock, Video, CheckCircle2, MessageSquare } from "lucide-react";
-import { STATUS } from "./data";
+import { X, Clock, Video, CheckCircle2, MessageSquare, AlertCircle } from "lucide-react";
+import { STATUS } from "./constants";
+import { formatInterviewDate, formatInterviewTime } from "../../../utils/interviewFormatting";
 
 const DRAWER_CONFIG = {
   [STATUS.UPCOMING]: {
@@ -22,26 +24,31 @@ const DRAWER_CONFIG = {
   },
   [STATUS.COMPLETED]: {
     title: "Completed History",
-    description: "Finished sessions waiting on scorecard evaluation.",
+    description: "Finished sessions and their evaluation state.",
     icon: CheckCircle2,
     iconBadge: "bg-primary-100 text-primary-800",
     emptyMessage: "No completed sessions logged.",
   },
+  [STATUS.NO_SHOW]: {
+    title: "No Shows",
+    description: "Interview sessions recorded as no-shows.",
+    icon: AlertCircle,
+    iconBadge: "bg-secondary-200 text-black/60",
+    emptyMessage: "No no-shows recorded.",
+  },
+  [STATUS.CANCELLED]: {
+    title: "Cancelled Interviews",
+    description: "Interview sessions that were cancelled.",
+    icon: AlertCircle,
+    iconBadge: "bg-red-50 text-red-700",
+    emptyMessage: "No cancelled interviews recorded.",
+  },
 };
 
 function formatDateTime(dateStr, timeStr) {
-  const date = dateStr
-    ? new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-    : "N/A";
-  if (!timeStr) return date;
-  if (timeStr.toLowerCase().includes("am") || timeStr.toLowerCase().includes("pm")) {
-    return `${date} • ${timeStr}`;
-  }
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 || 12;
-  const displayMinutes = String(minutes || 0).padStart(2, "0");
-  return `${date} • ${displayHours}:${displayMinutes} ${period}`;
+  const date = formatInterviewDate(dateStr);
+  const time = formatInterviewTime(timeStr);
+  return time === "N/A" ? date : `${date} • ${time}`;
 }
 
 /**
@@ -112,7 +119,7 @@ export default function InterviewStatusDrawer({ type, interviews, onClose, onJoi
                       </span>
                     </td>
                     <td className="py-3.5">
-                      {type === STATUS.UPCOMING && (
+                      {[STATUS.UPCOMING, STATUS.NO_SHOW, STATUS.CANCELLED].includes(type) && (
                         <span className="flex items-center gap-1.5 font-medium text-black/60">
                           <Clock size={13} /> {formatDateTime(item.interviewDate, item.interviewTime)}
                         </span>

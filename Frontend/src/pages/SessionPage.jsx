@@ -1,100 +1,5 @@
-// import React, { useEffect, useState } from "react";
-// import { useNavigate, useParams } from "react-router-dom";
-// import { SessionOverview } from "../components/organization/sessionPage";
-// import { useAuth } from "../context/AuthContext";
-// import interviewService from "../services/interviewService";
-// import chatService from "../services/chatService";
-// import { extractErrorMessage } from "../services/apiClient";
-
-
-// export default function SessionPage() {
-//   const { callId } = useParams();
-//   const navigate = useNavigate();
-//   const { interviewer, isInterviewerLogin } = useAuth();
-
-//   const [callDetails, setCallDetails] = useState(null);
-//   const [streamToken, setStreamToken] = useState(null);
-//   const [candidateName, setCandidateName] = useState("");
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [error, setError] = useState(null);
-
-//   useEffect(() => {
-//     let isActive = true;
-//     (async () => {
-//       setIsLoading(true);
-//       setError(null);
-//       try {
-//         const details = await interviewService.getCallDetails(callId);
-//         if (!isActive) return;
-//         setCallDetails(details.call || details);
-
-//         const displayName = isInterviewerLogin
-//           ? interviewer?.name || "Interviewer"
-//           : window.prompt("What's your name?")?.trim() || "Candidate";
-//         setCandidateName(displayName);
-
-//         const tokenData = await chatService.getStreamToken({
-//           userId: isInterviewerLogin ? interviewer?.id || "interviewer" : `candidate-${callId}`,
-//           userName: displayName,
-//         });
-//         if (isActive) setStreamToken(tokenData.token);
-//       } catch (err) {
-//         if (isActive) setError(extractErrorMessage(err, "This interview link is invalid or has expired."));
-//       } finally {
-//         if (isActive) setIsLoading(false);
-//       }
-//     })();
-//     return () => {
-//       isActive = false;
-//     };
-//     // eslint-disable-next-line react-hooks/exhaustive-deps
-//   }, [callId]);
-
-//   if (isLoading) {
-//     return (
-//       <div className="flex min-h-screen items-center justify-center bg-slate-900 text-slate-300">
-//         Joining interview room…
-//       </div>
-//     );
-//   }
-
-//   if (error) {
-//     return (
-//       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-900 px-4 text-center text-slate-300">
-//         <p className="text-lg font-semibold text-white">Can't join this interview</p>
-//         <p className="max-w-sm text-sm">{error}</p>
-//         <button
-//           type="button"
-//           onClick={() => navigate("/")}
-//           className="rounded-xl bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800"
-//         >
-//           Back to dashboard
-//         </button>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <SessionOverview
-//       userData={{
-//         id: isInterviewerLogin ? interviewer?.id || "interviewer" : `candidate-${callId}`,
-//         name: candidateName,
-//         role: isInterviewerLogin ? "interviewer" : "candidate",
-//       }}
-//       sessionInfo={{
-//         roundName: callDetails?.roundName || "Interview",
-//         callId,
-//       }}
-//       // Not yet consumed by SessionOverview — reserved for the Stream
-//       // Video SDK wiring described above.
-//       streamToken={streamToken}
-//     />
-//   );
-// }
-
-
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   StreamCall,
   StreamVideo,
@@ -112,8 +17,50 @@ import { useAuth } from "../context/AuthContext";
 import interviewService from "../services/interviewService";
 import chatService from "../services/chatService";
 import { extractErrorMessage } from "../services/apiClient";
+import { ArrowLeft, LogIn, ShieldCheck } from "lucide-react";
 
 const TOKEN_RETRY_DELAYS = [0, 750, 1500];
+
+function InterviewerLoginRequiredScreen({ onLogin, onBack }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-secondary-100 p-4">
+      <div className="w-full max-w-md rounded-3xl border border-secondary-300 bg-white p-7 text-center shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-8">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 ring-1 ring-primary-200">
+          <ShieldCheck size={28} />
+        </div>
+
+        <h1 className="mt-5 text-xl font-semibold text-slate-900">
+          Interviewer sign-in required
+        </h1>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">
+          This is an interviewer interview-room link. Sign in with the interviewer account assigned to this interview, then you will return directly to this room.
+        </p>
+
+        <button
+          type="button"
+          onClick={onLogin}
+          className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary-700 px-5 text-sm font-semibold text-white transition hover:bg-primary-800"
+        >
+          <LogIn size={16} />
+          Sign in as interviewer
+        </button>
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-secondary-300 bg-white px-5 text-sm font-semibold text-gray-700 transition hover:bg-secondary-100"
+        >
+          <ArrowLeft size={15} />
+          Back
+        </button>
+
+        <p className="mt-5 text-xs leading-5 text-gray-400">
+          Candidate links remain public. Interviewer host controls are protected by interviewer authentication.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 async function withRetry(factory) {
   let lastError;
@@ -137,6 +84,7 @@ export default function SessionPage() {
   const { callId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { interviewer, isInterviewerLogin } = useAuth();
 
   const requestedRole = searchParams.get("role");
@@ -147,6 +95,9 @@ export default function SessionPage() {
 
     return isInterviewerLogin ? "interviewer" : "candidate";
   }, [requestedRole, isInterviewerLogin]);
+
+  const interviewerAuthRequired =
+    joinRole === "interviewer" && !isInterviewerLogin;
 
   const [session, setSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -199,19 +150,19 @@ export default function SessionPage() {
     };
 
     const initializeSession = async () => {
-      setIsLoading(true);
       setError(null);
       setSession(null);
+
+      if (interviewerAuthRequired) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
 
       try {
         if (!callId) {
           throw new Error("Interview call ID is missing.");
-        }
-
-        if (joinRole === "interviewer" && !isInterviewerLogin) {
-          throw new Error(
-            "Please sign in to the interviewer portal before joining this interview."
-          );
         }
 
         const detailsResponse = await interviewService.getCallDetails(callId);
@@ -390,12 +341,30 @@ export default function SessionPage() {
       window.clearTimeout(startTimer);
       void cleanup();
     };
-  }, [callId, joinRole, isInterviewerLogin, interviewer?.name, retryKey]);
+  }, [callId, joinRole, interviewerAuthRequired, interviewer?.name, retryKey]);
 
   const displayName =
     joinRole === "interviewer"
       ? interviewer?.name || "Interviewer"
       : session?.sessionInfo?.candidateName || "Candidate";
+
+  if (interviewerAuthRequired) {
+    return (
+      <InterviewerLoginRequiredScreen
+        onLogin={() =>
+          navigate("/interviewers/login", {
+            state: {
+              from: {
+                pathname: location.pathname,
+                search: location.search || "?role=interviewer",
+              },
+            },
+          })
+        }
+        onBack={() => navigate("/interviewers/conduct-interviews")}
+      />
+    );
+  }
 
   if (isLoading) {
     return <ConnectingScreen name={displayName} />;

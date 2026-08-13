@@ -11,4 +11,3 @@ export { default as InterviewerHeader } from "./InterviewerHeader";
 export * from "./statusTone";
 
 
-export * from "./data";

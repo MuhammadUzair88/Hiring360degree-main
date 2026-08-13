@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { Search, Eye, FileEdit, CheckCircle2, Clock, ClipboardX } from "lucide-react";
 import { TONE_BADGE_CLASS } from "../dashboard/statusTone";
-import { evaluationCandidates as defaultCandidates } from "./data";
 
 /** Searchable table of finished interviews awaiting or holding evaluation feedback. */
 export default function EvaluationTable({
-  candidates = defaultCandidates,
+  candidates = [],
   onSelectCandidate,
   selectedId,
+  loading = false,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -48,7 +48,13 @@ export default function EvaluationTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-secondary-300/60">
-            {filtered.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="py-12 text-center text-sm text-zinc-500">
+                  Loading evaluations…
+                </td>
+              </tr>
+            ) : filtered.length > 0 ? (
               filtered.map((item) => {
                 const isSelected = selectedId === item.scheduleId;
                 const isDone = item.evaluationStatus === "Completed";
@@ -66,7 +72,10 @@ export default function EvaluationTable({
                       </span>
                       <span className="block text-zinc-600 text-xs mt-0.5">{item.candidateEmail}</span>
                     </td>
-                    <td className="px-6 py-4 text-slate-700 text-sm font-medium">{item.jobTitle}</td>
+                    <td className="px-6 py-4">
+                      <span className="block text-slate-700 text-sm font-medium">{item.jobTitle}</span>
+                      <span className="block text-zinc-500 text-xs mt-0.5">{item.roundName || "Interview Round"}</span>
+                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md ${

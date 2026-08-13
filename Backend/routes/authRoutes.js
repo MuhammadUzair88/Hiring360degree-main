@@ -1,14 +1,22 @@
-import express from 'express';
-import { home, login, organization, register, updateOrganization } from '../controllers/authController.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
+import express from "express";
+import {
+  home,
+  login,
+  organization,
+  register,
+  updateOrganization,
+  updatePassword,
+} from "../controllers/authController.js";
+import authMiddleware from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-router.route('/').get(home);
-router.route('/register').post(register)
-router.route('/login').post(login)
+router.get("/", home);
+router.post("/register", register);
+router.post("/login", login);
 
-router.route("/organization").get(authMiddleware, organization)
-router.route("/organization/update").put(authMiddleware, updateOrganization)
+router.get("/organization", authMiddleware, organization);
+router.put("/organization/update", authMiddleware, updateOrganization);
+router.put("/organization/password", authMiddleware, updatePassword);
 
 export default router;

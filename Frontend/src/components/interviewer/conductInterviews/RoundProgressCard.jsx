@@ -1,4 +1,3 @@
-// src/components/interviewerDashboard/conductInterview/RoundProgressCard.jsx
 
 import React from "react";
 
@@ -11,8 +10,9 @@ import React from "react";
  * card works for any candidate, not just "round 2 of 3".
  */
 export default function RoundProgressCard({ roundIndex, totalRounds, stageName }) {
-  const currentRound = roundIndex + 1;
-  const percent = Math.round((currentRound / totalRounds) * 100);
+  const safeTotalRounds = Math.max(Number(totalRounds) || 1, 1);
+  const currentRound = Math.min((Number(roundIndex) || 0) + 1, safeTotalRounds);
+  const percent = Math.round((currentRound / safeTotalRounds) * 100);
 
   return (
     <div className="self-stretch p-5 bg-secondary-50 rounded-lg shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] outline outline-1 outline-offset-[-1px] outline-secondary-300 flex flex-col gap-2">
@@ -20,7 +20,7 @@ export default function RoundProgressCard({ roundIndex, totalRounds, stageName }
 
       <div className="pt-2 flex justify-between items-center">
         <span className="text-slate-900 text-sm font-semibold leading-5">
-          {stageName ? `${stageName} — Round ${currentRound} of ${totalRounds}` : `Round ${currentRound} of ${totalRounds}`}
+          {stageName ? `${stageName} — Round ${currentRound} of ${safeTotalRounds}` : `Round ${currentRound} of ${safeTotalRounds}`}
         </span>
         <span className="text-primary-700 text-xs font-bold leading-4 tracking-tight">{percent}%</span>
       </div>
@@ -30,7 +30,7 @@ export default function RoundProgressCard({ roundIndex, totalRounds, stageName }
       </div>
 
       <div className="pt-1 flex justify-center items-start gap-1">
-        {Array.from({ length: totalRounds }).map((_, index) => (
+        {Array.from({ length: safeTotalRounds }).map((_, index) => (
           <div
             key={index}
             className={`flex-1 h-1 rounded-full ${index < currentRound ? "bg-primary-700" : "bg-primary-100"}`}

@@ -1,17 +1,18 @@
 import React from "react";
-import { scheduleCalendarMonth } from "./data";
 
 function formatDayLabel(day, year, monthIndex) {
   if (!day) return "";
-  return new Date(year, monthIndex, day).toLocaleDateString("default", { month: "short", day: "numeric" });
+  return new Date(year, monthIndex, day).toLocaleDateString("default", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
-/** List of interview agenda items for the day selected on ScheduleCalendar. */
 export default function DaySchedulePanel({
   day,
   agenda = [],
-  year = scheduleCalendarMonth.year,
-  monthIndex = scheduleCalendarMonth.monthIndex,
+  year = new Date().getFullYear(),
+  monthIndex = new Date().getMonth(),
 }) {
   return (
     <div className="p-5 bg-secondary-50/80 rounded-xl outline outline-1 outline-offset-[-1px] outline-secondary-300 backdrop-blur-sm flex flex-col gap-3">
@@ -27,7 +28,9 @@ export default function DaySchedulePanel({
                 {item.time}
               </span>
               <div className="flex-1 pl-3 border-l-2 border-primary-700">
-                <h5 className="text-slate-900 text-xs font-semibold leading-tight">{item.title}</h5>
+                <h5 className="text-slate-900 text-xs font-semibold leading-tight">
+                  {item.title}
+                </h5>
                 <span className="text-zinc-600 text-[11px]">{item.details}</span>
               </div>
             </div>

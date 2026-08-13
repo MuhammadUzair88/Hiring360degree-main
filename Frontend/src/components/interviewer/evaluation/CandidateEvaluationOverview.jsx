@@ -16,7 +16,7 @@ import StrengthsImprovementsSection from "./StrengthsImprovementsSection";
 import FinalRecommendationCard from "./FinalRecommendationCard";
 import { useToast } from "../../../context/ToastContext";
 
-export default function CandidateEvaluationOverview({ data, onBack, onViewResume, onSubmit }) {
+export default function CandidateEvaluationOverview({ data, onBack, onViewResume, onViewFullProfile, onSubmit }) {
   const toast = useToast();
   const { candidate, interviewFocus, competencyCategories, recommendationOptions, evaluation } = data;
 
@@ -110,7 +110,7 @@ export default function CandidateEvaluationOverview({ data, onBack, onViewResume
               <span className="text-slate-700">{candidate.name}</span>
             </button>
           )}
-          <h1 className="text-3xl font-bold text-slate-900">Technical Evaluation</h1>
+          <h1 className="text-3xl font-bold text-slate-900">{data.roundName || "Interview"} Evaluation</h1>
           <p className="text-gray-600">Record your assessment for {candidate.name}.</p>
         </div>
 
@@ -118,13 +118,16 @@ export default function CandidateEvaluationOverview({ data, onBack, onViewResume
           <button
             type="button"
             onClick={onViewResume}
-            className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-gray-700 hover:bg-slate-50 transition-colors"
+            disabled={!onViewResume}
+            className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-gray-700 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             View Resume
           </button>
           <button
             type="button"
-            className="px-4 py-2 rounded-lg bg-primary-800 hover:bg-primary-900 text-white text-sm font-semibold shadow-sm transition-colors"
+            onClick={onViewFullProfile}
+            disabled={!onViewFullProfile}
+            className="px-4 py-2 rounded-lg bg-primary-800 hover:bg-primary-900 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Full Profile
           </button>

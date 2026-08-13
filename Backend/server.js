@@ -2,7 +2,7 @@ import express from "express";
 import "dotenv/config";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
-import advertisementRoutes from "./routes/AdvertisementRoutes.js";
+import advertisementRoutes from "./routes/advertisementRoutes.js";
 import applicationRoutes from "./routes/applicationRoutes.js";
 import candidateRoutes from "./routes/candidateRoutes.js"
 import roundRoutes from "./routes/interviewPipelineRoutes.js";
@@ -15,6 +15,7 @@ import interviewerDashboardRoutes from "./routes/interviewerDashboardRoutes.js"
 import offerLetterRoutes from "./routes/offerLetterRoutes.js"
 import dashboardRoutes from './routes/orgDashboardRoutes.js';
 import socialRoutes from "./routes/socialRoutes.js";
+import headerRoutes from "./routes/headerRoutes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -29,6 +30,7 @@ app.listen(port, () => {
 
 app.use('/api/v1', dashboardRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/header", headerRoutes);
 app.use("/api/advertisement",advertisementRoutes );
 app.use("/api/application",applicationRoutes);
 app.use("/api/form",candidateRoutes);

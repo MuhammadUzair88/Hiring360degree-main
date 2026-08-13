@@ -95,45 +95,7 @@ export default function SecondaryHeader({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-        {(showSearch || showFilter) && (
-          <div className="hidden sm:flex items-center gap-1">
-            {showSearch && (
-              <button
-                type="button"
-                onClick={onSearch}
-                aria-label="Search"
-                className="p-2 rounded-full text-gray-600 hover:bg-secondary-200 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-            )}
-            {showFilter && (
-              <button
-                type="button"
-                onClick={onFilter}
-                aria-label="Filter"
-                className="p-2 rounded-full text-gray-600 hover:bg-secondary-200 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2"
-              >
-                <SlidersHorizontal className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-        )}
-
-        {showCta && (
-          <button
-            type="button"
-            onClick={onCtaClick}
-            aria-label={ctaLabel}
-            className="flex items-center gap-2 px-3 sm:px-6 py-2.5 bg-primary-800 rounded-lg shadow-sm text-secondary-50 text-base font-semibold leading-6 hover:bg-primary-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2"
-          >
-            <Download className="w-4 h-4 sm:hidden" />
-            <span className="hidden sm:inline">{ctaLabel}</span>
-          </button>
-        )}
-      </div>
+  
     </header>
   );
 }

@@ -1,10 +1,10 @@
+
 import React from "react";
-import { advertisementStats } from "./data";
 import AdvertisementStatMetricCard from "./AdvertisementStatMetricCard";
 
-export default function AdvertisementStatMetricsOverview({ stats = advertisementStats }) {
+export default function AdvertisementStatMetricsOverview({ stats = [] }) {
   return (
-    <div className="self-stretch grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((stat) => (
         <AdvertisementStatMetricCard key={stat.id} {...stat} />
       ))}

@@ -1,0 +1,39 @@
+/*
+ * Hiring360 screen-share sizing fix
+ * ---------------------------------
+ * Stream's participant renderer is optimized for people/camera video, where
+ * filling the tile is usually desirable. Screen sharing is different: every
+ * pixel of the desktop/document needs to remain visible.
+ */
+
+.session-screen-share-stage,
+.session-screen-share-stage .session-stream-screen-share,
+.session-screen-share-stage .str-video__participant-view {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+/* Keep the complete shared desktop visible. */
+.session-screen-share-stage video,
+.session-screen-share-stage .str-video__participant-view video {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  background: #000 !important;
+}
+
+/* Do not allow Stream's inner wrappers to grow beyond the available stage. */
+.session-screen-share-stage > *,
+.session-screen-share-stage .str-video__participant-view > * {
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+}

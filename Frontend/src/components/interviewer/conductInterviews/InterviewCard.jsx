@@ -1,30 +1,10 @@
-// src/components/interviewerDashboard/conductInterview/InterviewCard.jsx
 
 import React from "react";
 import { Link } from "react-router-dom";
 import { Calendar, Clock, ArrowRight, User, Video, MessageSquare } from "lucide-react";
 import { getStatusTone } from "./StatusTone";
-import { STATUS } from "./data";
-
-/** "14:30" -> "2:30 PM". Falls back to the raw string if parsing fails. */
-function formatTime(timeStr) {
-  if (!timeStr) return "N/A";
-  if (timeStr.toLowerCase().includes("am") || timeStr.toLowerCase().includes("pm")) return timeStr;
-  try {
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    const period = hours >= 12 ? "PM" : "AM";
-    const displayHours = hours % 12 || 12;
-    const displayMinutes = String(minutes || 0).padStart(2, "0");
-    return `${displayHours}:${displayMinutes} ${period}`;
-  } catch {
-    return timeStr;
-  }
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return "N/A";
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
+import { STATUS } from "./constants";
+import { formatInterviewDate, formatInterviewTime } from "../../../utils/interviewFormatting";
 
 /**
  * One candidate dossier in the roster grid. The whole card is a link to
@@ -99,10 +79,10 @@ export default function InterviewCard({ interview, onJoinInterview }) {
       <div className="relative mt-auto pt-3 border-t border-secondary-300 flex items-center justify-between text-[11px] font-semibold text-black/50">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1">
-            <Calendar size={13} /> {formatDate(interview.interviewDate)}
+            <Calendar size={13} /> {formatInterviewDate(interview.interviewDate)}
           </span>
           <span className="flex items-center gap-1">
-            <Clock size={13} /> {formatTime(interview.interviewTime)}
+            <Clock size={13} /> {formatInterviewTime(interview.interviewTime)}
           </span>
         </div>
 

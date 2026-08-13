@@ -1,4 +1,3 @@
-// src/components/interviewerDashboard/conductInterview/ConductInterviewOverview.jsx
 
 import React, { useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
@@ -7,7 +6,7 @@ import InterviewStatusMetrics from "./InterviewStatusMetrics";
 import InterviewFilterBar from "./InterviewFilterBar";
 import InterviewGrid from "./InterviewGrid";
 import InterviewStatusDrawer from "./InterviewStatusDrawer";
-import { getInterviewCounts } from "./data";
+import { getInterviewCounts } from "./constants";
 
 /**
  * Everything on the Conduct Interviews page, wired together:

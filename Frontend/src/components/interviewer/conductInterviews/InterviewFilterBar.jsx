@@ -1,10 +1,9 @@
-// src/components/interviewerDashboard/conductInterview/InterviewFilterBar.jsx
 
 import React from "react";
 import { Search, ChevronDown } from "lucide-react";
-import { STATUS } from "./data";
+import { STATUS } from "./constants";
 
-const STATUS_OPTIONS = ["All", STATUS.UPCOMING, STATUS.ONGOING, STATUS.COMPLETED];
+const STATUS_OPTIONS = ["All", STATUS.UPCOMING, STATUS.ONGOING, STATUS.COMPLETED, STATUS.NO_SHOW, STATUS.CANCELLED];
 
 /**
  * Search input + status dropdown for the interview roster below.

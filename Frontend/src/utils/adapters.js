@@ -81,7 +81,13 @@ export function mapApplicationToCandidate(application) {
     email: application.candidateId?.email || "",
     status: mapApplicationStatusToUi(application.status),
     appliedAt: application.createdAt,
-    resume: { url: application.resume?.url, pageCount: null },
+    resume: application.resume?.url
+      ? {
+          url: application.resume.url,
+          type: application.resume.type || "",
+          pageCount: null,
+        }
+      : null,
     analysisStatus: ai?.analysisStatus || "not_started",
     aiEvaluation: hasAnalysis
       ? {

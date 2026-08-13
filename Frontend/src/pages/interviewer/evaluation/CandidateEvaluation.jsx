@@ -6,11 +6,31 @@ import interviewerDashboardService from "../../../services/interviewerDashboardS
 import { extractErrorMessage } from "../../../services/apiClient";
 
 const COMPETENCY_CATEGORIES = [
-  { id: "technicalSkills", label: "Technical Skills", description: "Knowledge of core tools and technologies" },
-  { id: "problemSolving", label: "Problem Solving", description: "Analytical thinking and debug efficiency" },
-  { id: "communication", label: "Communication", description: "Clarity and articulation" },
-  { id: "behavioralSkills", label: "Behavioral Skills", description: "Leadership and conflict management" },
-  { id: "culturalFit", label: "Cultural Fit", description: "Alignment with core company values" },
+  {
+    id: "technicalSkills",
+    label: "Technical Skills",
+    description: "Knowledge of core tools and technologies",
+  },
+  {
+    id: "problemSolving",
+    label: "Problem Solving",
+    description: "Analytical thinking and debug efficiency",
+  },
+  {
+    id: "communication",
+    label: "Communication",
+    description: "Clarity and articulation",
+  },
+  {
+    id: "behavioralSkills",
+    label: "Behavioral Skills",
+    description: "Leadership and conflict management",
+  },
+  {
+    id: "culturalFit",
+    label: "Cultural Fit",
+    description: "Alignment with core company values",
+  },
 ];
 
 const RECOMMENDATION_OPTIONS = [
@@ -22,19 +42,30 @@ const RECOMMENDATION_OPTIONS = [
 
 function toEvaluationData(raw) {
   return {
+    scheduleId: raw.scheduleId,
+    applicationId: raw.applicationId,
+    resumeUrl: raw.resumeUrl || "",
+    roundName: raw.roundName || "Interview Round",
+    interviewDate: raw.interviewDate || "",
+    interviewTime: raw.interviewTime || "",
     candidate: {
-      id: raw.candidate.email,
-      name: raw.candidate.name,
-      email: raw.candidate.email,
-      role: raw.assignedTargetRole,
+      id: raw.candidate?.id || raw.candidate?.email || "",
+      name: raw.candidate?.name || "Candidate",
+      email: raw.candidate?.email || "",
+      phone: raw.candidate?.phone || "",
+      role: raw.assignedTargetRole || "N/A",
       avatarUrl: "",
       status: raw.isSubmitted ? "Submitted" : "In Progress",
-      assignedRole: raw.assignedTargetRole,
+      assignedRole: raw.assignedTargetRole || "N/A",
+      department: raw.department || "N/A",
+      employmentType: raw.employmentType || "N/A",
+      workMode: raw.workMode || "N/A",
+      workLocation: raw.workLocation || "N/A",
     },
     interviewFocus: [],
-    competencyCategories: COMPETENCY_CATEGORIES.map((cat) => ({
-      ...cat,
-      rating: raw.evaluation?.ratings?.[cat.id] || 0,
+    competencyCategories: COMPETENCY_CATEGORIES.map((category) => ({
+      ...category,
+      rating: raw.evaluation?.ratings?.[category.id] || 0,
     })),
     recommendationOptions: RECOMMENDATION_OPTIONS,
     evaluation: {
@@ -42,7 +73,7 @@ function toEvaluationData(raw) {
       improvements: raw.evaluation?.areasForImprovement || "",
       recommendation: raw.evaluation?.recommendation || "",
       finalComments: raw.evaluation?.finalComments || "",
-      isSubmitted: raw.isSubmitted,
+      isSubmitted: Boolean(raw.isSubmitted),
     },
   };
 }
@@ -51,30 +82,73 @@ export default function CandidateEvaluation() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [data, setData] = useState(undefined); // undefined = loading, null = not found
+  const [data, setData] = useState(undefined);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let isActive = true;
     setData(undefined);
+    setError(null);
+
     interviewerDashboardService
       .getEvaluationById(id)
       .then((raw) => {
         if (isActive) setData(toEvaluationData(raw));
       })
-      .catch((err) => {
+      .catch((requestError) => {
         if (isActive) {
           setData(null);
-          setError(extractErrorMessage(err, "Failed to load this evaluation."));
+          setError(
+            extractErrorMessage(requestError, "Failed to load this evaluation.")
+          );
         }
       });
+
     return () => {
       isActive = false;
     };
   }, [id]);
 
   const handleSubmit = async (payload) => {
-    await interviewerDashboardService.submitEvaluation(id, payload);
+    const response = await interviewerDashboardService.submitEvaluation(id, payload);
+
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            competencyCategories: current.competencyCategories.map((category) => ({
+              ...category,
+              rating: response?.evaluation?.ratings?.[category.id] || payload[category.id],
+            })),
+            evaluation: {
+              strengths: response?.evaluation?.coreStrengths || payload.coreStrengths,
+              improvements:
+                response?.evaluation?.areasForImprovement || payload.areasForImprovement,
+              recommendation:
+                response?.evaluation?.recommendation || payload.recommendation,
+              finalComments:
+                response?.evaluation?.finalComments || payload.finalComments || "",
+              isSubmitted: true,
+            },
+            candidate: {
+              ...current.candidate,
+              status: "Submitted",
+            },
+          }
+        : current
+    );
+
+    return response;
+  };
+
+  const handleViewResume = () => {
+    if (!data?.resumeUrl) return;
+    window.open(data.resumeUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handleViewFullProfile = () => {
+    if (!data?.scheduleId) return;
+    navigate(`/interviewers/conduct-interviews/${data.scheduleId}`);
   };
 
   if (data === undefined) {
@@ -106,6 +180,8 @@ export default function CandidateEvaluation() {
       <CandidateEvaluationOverview
         data={data}
         onBack={() => navigate("/interviewers/evaluation")}
+        onViewResume={data.resumeUrl ? handleViewResume : undefined}
+        onViewFullProfile={handleViewFullProfile}
         onSubmit={handleSubmit}
       />
     </div>

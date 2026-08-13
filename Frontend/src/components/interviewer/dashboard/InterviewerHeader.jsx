@@ -1,23 +1,6 @@
 import React, { useState } from "react";
 import { Users, Globe, Mail, ChevronDown, ChevronUp } from "lucide-react";
 
-/**
- * Shared identity header used across every interviewer page (Dashboard,
- * Conduct Interviews, Evaluation).
- *
- * Renders the organization's identity (logo + name) together with the
- * signed-in interviewer's greeting — built once, reused everywhere, so
- * future pages don't reimplement this markup. Each page only supplies
- * its own `organization` / `interviewer` data (or, once the API is
- * wired up, values from context) and, optionally, a page-specific
- * action for the right side via the `actions` slot.
- *
- * Responsive behavior: name + greeting are always visible. The
- * secondary details (location, email, role badge) collapse behind a
- * "More / Less" toggle below the `sm` breakpoint, since those are the
- * first things to cause overflow/wrapping on a phone-width screen;
- * from `sm` up they always show inline and the toggle itself hides.
- */
 export default function InterviewerHeader({ organization, interviewer, actions }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 

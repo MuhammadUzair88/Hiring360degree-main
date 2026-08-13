@@ -1,19 +1,17 @@
 import React, { useMemo, useState } from "react";
 import { Search, GraduationCap, Calendar, Eye, ChevronLeft, ChevronRight, Video } from "lucide-react";
-import { recentInterviews as defaultInterviews } from "./data";
 import { toneForStatus, TONE_BADGE_CLASS } from "./statusTone";
+import { formatInterviewDate, formatInterviewTime } from "../../../utils/interviewFormatting";
 
 const ITEMS_PER_PAGE = 5;
 
-function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
 
 /** Searchable, paginated table of recent/upcoming interview schedules. */
 export default function RecentInterviewsTable({
-  interviews = defaultInterviews,
+  interviews = [],
   onViewDetails,
   itemsPerPage = ITEMS_PER_PAGE,
+  loading = false,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,7 +68,13 @@ export default function RecentInterviewsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-secondary-300/60">
-            {pageItems.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="py-12 text-center text-sm text-zinc-500">
+                  Loading interview schedule…
+                </td>
+              </tr>
+            ) : pageItems.length > 0 ? (
               pageItems.map((item) => {
                 const tone = toneForStatus(item.status);
                 return (
@@ -101,7 +105,7 @@ export default function RecentInterviewsTable({
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5 text-zinc-600 text-xs font-medium">
                         <Calendar size={13} />
-                        {formatDate(item.interviewDate)} • {item.interviewTime}
+                        {formatInterviewDate(item.interviewDate)} • {formatInterviewTime(item.interviewTime)}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
