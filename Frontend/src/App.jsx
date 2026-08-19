@@ -24,6 +24,7 @@ import CandidateDetails from "./pages/interviewer/conductInterviews/CandidateDet
 import CandidateEvaluation from "./pages/interviewer/evaluation/CandidateEvaluation";
 import InterviewerLogin from "./pages/interviewer/auth/InterviewerLogin";
 import NotFound from "./pages/NotFound";
+import LandingPage from "./pages/landingPage/LandingPage"
 
 import {
   OrganizationRoute,
@@ -38,6 +39,7 @@ import SocialConnectCallback from "./pages/connectSocials/SocialConnectCallback"
 function App() {
   return (
     <Routes>
+      <Route path="/landing-page" element={<LandingPage />} />
       {/* ───────────────────── Organization auth (guest only) ───────────────────── */}
       <Route
         path="/login"

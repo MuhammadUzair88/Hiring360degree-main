@@ -412,3 +412,11 @@ body {
          hover:bg-secondary-200 hover:text-primary-800 transition-colors
          focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2;
 }
+
+@layer components {
+  /* Push page content below the fixed public Navbar so it doesn't render underneath it */
+  .app-navbar-offset {
+    @apply pt-24 sm:pt-28;
+  }
+}
+

@@ -1,0 +1,100 @@
+/**
+ * Animations shared by every component in this folder.
+ * Imported once, in IntelligenceOverview.jsx.
+ *
+ * Respects prefers-reduced-motion — all loops are switched off for people
+ * who've asked their OS to reduce motion.
+ */
+
+/* Concentric rings expanding outward from the AI core, then fading. */
+@keyframes intel-pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+.intel-pulse-ring {
+  animation: intel-pulse-ring 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Dashed connector lines that appear to flow toward the AI core. */
+@keyframes intel-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+.intel-flow-line {
+  stroke-dasharray: 6 6;
+  animation: intel-dash 1.4s linear infinite;
+}
+
+/* Gentle bob, used on the engine's checklist cards. */
+@keyframes intel-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.intel-float {
+  animation: intel-float 4s ease-in-out infinite;
+}
+
+/* Soft glow pulse behind the match badge. */
+@keyframes intel-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.08);
+  }
+}
+.intel-glow {
+  animation: intel-glow 2.6s ease-in-out infinite;
+}
+
+/* Staggered entrance for whole sections as they mount. */
+@keyframes intel-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.intel-stagger-1 {
+  animation: intel-fade-up 0.6s ease-out 0.05s both;
+}
+.intel-stagger-2 {
+  animation: intel-fade-up 0.6s ease-out 0.18s both;
+}
+.intel-stagger-3 {
+  animation: intel-fade-up 0.6s ease-out 0.3s both;
+}
+.intel-stagger-4 {
+  animation: intel-fade-up 0.6s ease-out 0.42s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intel-pulse-ring,
+  .intel-flow-line,
+  .intel-float,
+  .intel-glow,
+  .intel-stagger-1,
+  .intel-stagger-2,
+  .intel-stagger-3,
+  .intel-stagger-4 {
+    animation: none !important;
+  }
+}
