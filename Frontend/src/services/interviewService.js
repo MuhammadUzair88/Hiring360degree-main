@@ -68,6 +68,40 @@ const interviewService = {
     return data;
   },
 
+  getCodingSession: async (callId, codingToken) => {
+    const { data } = await apiClient.get(
+      `/api/interview/call/${callId}/coding-session`,
+      { headers: { "X-Coding-Session-Token": codingToken }, tokenRole: "public" }
+    );
+    return data;
+  },
+
+  getCompilerLanguages: async (callId, codingToken) => {
+    const { data } = await apiClient.get(
+      `/api/interview/call/${callId}/coding-session/languages`,
+      { headers: { "X-Coding-Session-Token": codingToken }, tokenRole: "public" }
+    );
+    return data;
+  },
+
+  updateCodingSession: async (callId, codingToken, updates) => {
+    const { data } = await apiClient.patch(
+      `/api/interview/call/${callId}/coding-session`,
+      updates,
+      { headers: { "X-Coding-Session-Token": codingToken }, tokenRole: "public" }
+    );
+    return data;
+  },
+
+  runCodingSubmission: async (callId, codingToken, submission) => {
+    const { data } = await apiClient.post(
+      `/api/interview/call/${callId}/coding-session/run`,
+      submission,
+      { headers: { "X-Coding-Session-Token": codingToken }, tokenRole: "public" }
+    );
+    return data;
+  },
+
   /** POST /api/interview/call/:callId/started — assigned interviewer only */
   markCallStarted: async (callId) => {
     const { data } = await apiClient.post(

@@ -76,6 +76,15 @@ const scheduledInterviewSchema = new mongoose.Schema(
     streamCandidateId: {
       type: String,
     },
+
+    codingSession: {
+      enabled: { type: Boolean, default: false },
+      languageId: { type: Number, default: null },
+      sourceCode: { type: String, default: "" },
+      stdin: { type: String, default: "" },
+      revision: { type: Number, default: 0 },
+      updatedAt: { type: Date, default: Date.now },
+    },
   },
   {
     timestamps: true,

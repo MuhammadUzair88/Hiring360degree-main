@@ -2,6 +2,40 @@
 import { candidateInterviewTemplate, interviewerInterviewTemplate, offerLetterTemplate } from "../utils/templates/emailTemplate.js";
 import { transporter } from "./email-config-middleware.js";
 
+async function sendEmailMessage({ from, to, subject, html, replyTo }) {
+  if (process.env.RESEND_API_KEY) {
+    if (!from || from.includes("undefined")) {
+      throw new Error("EMAIL_FROM must be set to a verified sender address");
+    }
+
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const reason = result.message || result.name || `HTTP ${response.status}`;
+      throw new Error(`Resend rejected the email: ${reason}`);
+    }
+
+    return { messageId: result.id };
+  }
+
+  return transporter.sendMail({ from, to, subject, html, replyTo });
+}
+
 export const sendInterviewEmails = async ({
   candidateEmail,
   candidateName,
@@ -66,14 +100,14 @@ export const sendInterviewEmails = async ({
       .replaceAll("{supportEmail}", supportEmail || "support@company.com");
 
     const [candidateResult, interviewerResult] = await Promise.all([
-      transporter.sendMail({
+      sendEmailMessage({
         from: `"${orgName} Hiring Team" <${process.env.EMAIL_FROM}>`,
         to: candidateEmail,
         subject: `Interview Invitation: ${jobTitle} - ${roundName}`,
         html: candidateHtml,
         replyTo: supportEmail,
       }),
-      transporter.sendMail({
+      sendEmailMessage({
         from: `"${orgName} Recruitment System" <${process.env.EMAIL_FROM}>`,
         to: interviewerEmail,
         subject: `Interview Scheduled: ${candidateName} - ${jobTitle} (${roundName})`,
@@ -162,7 +196,7 @@ export const sendInterviewerCredentialsEmail = async ({
       </div>
     `;
 
-    const result = await transporter.sendMail({
+    const result = await sendEmailMessage({
       from: `"${orgName} Recruitment System" <${process.env.EMAIL_FROM}>`,
       to: interviewerEmail,
       subject: `Your Interviewer Account for ${orgName}`,
@@ -391,7 +425,7 @@ export const sendOfferLetterEmail = async ({
 </body>
 </html>`;
 
-    const result = await transporter.sendMail({
+    const result = await sendEmailMessage({
       from: `"${orgName}" <${process.env.EMAIL_FROM}>`,
       to: candidateEmail,
       subject: `Offer Letter: ${jobTitle || "Position"} — ${orgName}`,

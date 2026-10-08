@@ -283,6 +283,7 @@ export default function SessionPage() {
           videoClient,
           call,
           chatChannel,
+          codingToken: initialTokens.codingToken,
           userData: {
             id: streamUser.id,
             name:
@@ -393,6 +394,7 @@ export default function SessionPage() {
           userData={session.userData}
           sessionInfo={session.sessionInfo}
           chatChannel={session.chatChannel}
+          codingToken={session.codingToken}
         />
       </StreamCall>
     </StreamVideo>

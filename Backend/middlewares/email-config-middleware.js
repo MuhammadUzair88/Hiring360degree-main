@@ -14,16 +14,18 @@ export const transporter = nodemailer.createTransport({
     user: process.env.EMAIL,
     pass: process.env.EMAIL_PASSWORD, // This should be an App Password, not your regular password
   },
-  tls: {
-    rejectUnauthorized: false // Only for development
-  }
 });
 
-// Verify connection
-transporter.verify(function (error, success) {
-  if (error) {
-    console.log("Email server connection error:", error);
-  } else {
-    console.log("Email server is ready to send messages");
-  }
-});
+// Render's free web services block outbound SMTP ports. When an HTTPS email
+// API is configured, skip this SMTP connectivity check entirely.
+if (!process.env.RESEND_API_KEY) {
+  transporter.verify((error) => {
+    if (error) {
+      console.error("SMTP connection unavailable:", error.message);
+    } else {
+      console.log("SMTP email service is ready");
+    }
+  });
+} else {
+  console.log("Resend email API is configured");
+}

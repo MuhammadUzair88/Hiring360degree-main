@@ -13,4 +13,5 @@ export const NETWORK_STATUS = {
 export const SESSION_PANEL = {
   PARTICIPANTS: "participants",
   CHAT: "chat",
+  CODE: "code",
 };

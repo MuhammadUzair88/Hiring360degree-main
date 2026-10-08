@@ -18,6 +18,13 @@ import {
 } from "../controllers/interviewController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import interviewCallHostMiddleware from "../middlewares/interviewCallHostMiddleware.js";
+import codingSessionAuthMiddleware from "../middlewares/codingSessionAuthMiddleware.js";
+import {
+  getCodingSession,
+  updateCodingSession,
+  getCompilerLanguages,
+  runCodingSubmission,
+} from "../controllers/codingSessionController.js";
 import { muteCandidateInCall } from "../utils/stream.js";
 import {
   decideRoundOutcome,
@@ -29,6 +36,29 @@ const router = express.Router();
 // Candidate-accessible room bootstrap route. The random callId comes from the
 // emailed meeting link; no organization/interviewer account is required.
 router.get("/call/:callId/details", getCallDetails);
+
+// Shared coding room state is authorized by a short-lived participant token
+// minted alongside the Stream tokens. Only the interviewer can toggle it.
+router.get(
+  "/call/:callId/coding-session/languages",
+  codingSessionAuthMiddleware,
+  getCompilerLanguages
+);
+router.get(
+  "/call/:callId/coding-session",
+  codingSessionAuthMiddleware,
+  getCodingSession
+);
+router.patch(
+  "/call/:callId/coding-session",
+  codingSessionAuthMiddleware,
+  updateCodingSession
+);
+router.post(
+  "/call/:callId/coding-session/run",
+  codingSessionAuthMiddleware,
+  runCodingSubmission
+);
 
 // Starting the interview and all moderator actions require the assigned
 // interviewer's JWT. A candidate opening the link early cannot mark it Ongoing.

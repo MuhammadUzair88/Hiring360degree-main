@@ -22,6 +22,7 @@ import ParticipantsPanel from "./ParticipantsPanel";
 import ToastNotification from "./ToastNotification";
 import LeaveSessionModal from "./LeaveSessionModal";
 import EndSessionModal from "./EndSessionModal";
+import CollaborativeCodePanel from "./CollaborativeCodePanel";
 import interviewService from "../../../services/interviewService";
 import { extractErrorMessage } from "../../../services/apiClient";
 
@@ -37,6 +38,7 @@ export default function SessionOverview({
   userData,
   sessionInfo,
   chatChannel,
+  codingToken,
   aiAssistant = null,
 }) {
   const navigate = useNavigate();
@@ -66,6 +68,16 @@ export default function SessionOverview({
   const callEndedAt = useCallEndedAt();
 
   const [activePanel, setActivePanel] = useState(SESSION_PANEL.PARTICIPANTS);
+  const [codingSession, setCodingSession] = useState({
+    enabled: false,
+    languageId: null,
+    sourceCode: "",
+    stdin: "",
+    revision: 0,
+  });
+  const [compilerLanguages, setCompilerLanguages] = useState([]);
+  const [isLoadingCompilerLanguages, setIsLoadingCompilerLanguages] = useState(false);
+  const [codingToggleBusy, setCodingToggleBusy] = useState(false);
   const [leaveConfirmation, setLeaveConfirmation] = useState(false);
   const [endSessionConfirmation, setEndSessionConfirmation] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
@@ -79,6 +91,15 @@ export default function SessionOverview({
 
   const toastTimerRef = useRef(null);
   const endRedirectedRef = useRef(false);
+  const previousCodingEnabledRef = useRef(false);
+
+  const applyCodingSession = useCallback((nextSession) => {
+    setCodingSession((current) =>
+      Number(nextSession?.revision || 0) >= Number(current.revision || 0)
+        ? nextSession
+        : current
+    );
+  }, []);
 
   const showToast = useCallback((message) => {
     setToastMessage(message);
@@ -92,6 +113,77 @@ export default function SessionOverview({
     },
     []
   );
+
+  useEffect(() => {
+    if (!codingToken || !sessionInfo.callId) return undefined;
+
+    let active = true;
+    let timer;
+    const pollCodingSession = async () => {
+      try {
+        const response = await interviewService.getCodingSession(
+          sessionInfo.callId,
+          codingToken
+        );
+        if (active && response.codingSession) {
+          applyCodingSession(response.codingSession);
+        }
+      } catch (error) {
+        if (active) {
+          console.warn("Unable to sync interview code session:", error);
+        }
+      } finally {
+        if (active) timer = window.setTimeout(pollCodingSession, 1000);
+      }
+    };
+
+    void pollCodingSession();
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [applyCodingSession, codingToken, sessionInfo.callId]);
+
+  useEffect(() => {
+    if (!codingSession.enabled || !codingToken || !sessionInfo.callId) {
+      setCompilerLanguages([]);
+      setIsLoadingCompilerLanguages(false);
+      return undefined;
+    }
+
+    let active = true;
+    setIsLoadingCompilerLanguages(true);
+    interviewService
+      .getCompilerLanguages(sessionInfo.callId, codingToken)
+      .then((response) => {
+        if (active) setCompilerLanguages(response.languages || []);
+      })
+      .catch((error) => {
+        if (active) {
+          console.warn("Unable to load compiler languages:", error);
+          setCompilerLanguages([]);
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoadingCompilerLanguages(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [codingSession.enabled, codingToken, sessionInfo.callId]);
+
+  useEffect(() => {
+    const wasEnabled = previousCodingEnabledRef.current;
+    if (codingSession.enabled && !wasEnabled) {
+      setActivePanel(SESSION_PANEL.CODE);
+    } else if (!codingSession.enabled && wasEnabled) {
+      setActivePanel((current) =>
+        current === SESSION_PANEL.CODE ? SESSION_PANEL.PARTICIPANTS : current
+      );
+    }
+    previousCodingEnabledRef.current = codingSession.enabled;
+  }, [codingSession.enabled]);
 
   const participants = useMemo(
     () =>
@@ -262,6 +354,63 @@ export default function SessionOverview({
       });
     }
   };
+
+  const handleToggleCoding = async () => {
+    if (!isHost || !codingToken || codingToggleBusy) return;
+
+    setCodingToggleBusy(true);
+    try {
+      const response = await interviewService.updateCodingSession(
+        sessionInfo.callId,
+        codingToken,
+        { enabled: !codingSession.enabled }
+      );
+      applyCodingSession(response.codingSession);
+      showToast(
+        response.codingSession.enabled
+          ? "Shared code editor enabled"
+          : "Shared code editor disabled"
+      );
+    } catch (error) {
+      showToast(extractErrorMessage(error, "Code editor setting could not be changed."));
+    } finally {
+      setCodingToggleBusy(false);
+    }
+  };
+
+  const handleSaveCodingSession = useCallback(
+    async (updates) => {
+      const response = await interviewService.updateCodingSession(
+        sessionInfo.callId,
+        codingToken,
+        updates
+      );
+      applyCodingSession(response.codingSession);
+      return response.codingSession;
+    },
+    [applyCodingSession, codingToken, sessionInfo.callId]
+  );
+
+  const handleRunCode = useCallback(
+    async (submission) => {
+      const response = await interviewService.runCodingSubmission(
+        sessionInfo.callId,
+        codingToken,
+        {
+          languageId: submission.languageId,
+          sourceCode: submission.sourceCode,
+          stdin: submission.stdin,
+        }
+      );
+      return (
+        response.result || {
+          status: response.message || "Compilation pending",
+          message: response.message || "The compiler is still processing.",
+        }
+      );
+    },
+    [codingToken, sessionInfo.callId]
+  );
 
   const handleToggleMic = async () => {
     try {
@@ -478,8 +627,20 @@ export default function SessionOverview({
         onSelectTab={handleSelectTab}
         participantCount={participants.length}
         unreadCount={unreadCount}
+        isHost={isHost}
+        codingEnabled={codingSession.enabled}
+        codingToggleBusy={codingToggleBusy}
+        onToggleCoding={handleToggleCoding}
       >
-        {activePanel === SESSION_PANEL.CHAT ? (
+        {activePanel === SESSION_PANEL.CODE && codingSession.enabled ? (
+          <CollaborativeCodePanel
+            codingSession={codingSession}
+            languages={compilerLanguages}
+            isLoadingLanguages={isLoadingCompilerLanguages}
+            onSave={handleSaveCodingSession}
+            onRun={handleRunCode}
+          />
+        ) : activePanel === SESSION_PANEL.CHAT ? (
           <ChatPanel messages={chatMessages} onSendMessage={handleSendMessage} />
         ) : (
           <ParticipantsPanel

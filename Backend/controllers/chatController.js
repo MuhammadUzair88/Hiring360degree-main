@@ -151,6 +151,17 @@ export const getStreamToken = async (req, res) => {
     const issuedAt = Math.floor(Date.now() / 1000);
     const expiresAt = issuedAt + TOKEN_VALIDITY_SECONDS;
     const chatToken = chatClient.createToken(userId, expiresAt, issuedAt);
+    const codingToken = jwt.sign(
+      {
+        callId,
+        role,
+        ...(isInterviewer
+          ? { interviewerId: String(interviewerDoc._id) }
+          : {}),
+      },
+      process.env.JWT_TOKEN_SECRET,
+      { expiresIn: "4h" }
+    );
 
     // Persist recovered Stream ids for legacy schedules so subsequent requests
     // do not need to reconstruct them.
@@ -165,6 +176,7 @@ export const getStreamToken = async (req, res) => {
       apiKey: process.env.STREAM_API_KEY,
       videoToken,
       chatToken,
+      codingToken,
       // Backward compatibility for older SessionPage implementations.
       token: videoToken,
       user: {
