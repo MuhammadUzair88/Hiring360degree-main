@@ -11,7 +11,7 @@ import {
   buildApplyUrl,
   buildSocialPostText,
   downloadDataUrl,
-} from "./publishUtils";
+} from "./publishutils";
 
 export default function PublishSuccessModal({
   isOpen,

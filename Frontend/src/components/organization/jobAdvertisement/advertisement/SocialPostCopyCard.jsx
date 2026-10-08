@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Copy, Check } from "lucide-react";
-import { copyTextToClipboard } from "./publishUtils";
+import { copyTextToClipboard } from "./publishutils";
 
 /** Generated caption + a Copy Text button that actually copies it (navigator.clipboard), with a 2s "Copied!" confirmation. */
 export default function SocialPostCopyCard({ text }) {

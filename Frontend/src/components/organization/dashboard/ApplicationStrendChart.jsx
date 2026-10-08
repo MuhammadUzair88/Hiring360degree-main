@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
-import ChartTooltip from "./ChartTooltip";
+import ChartTooltip from "./ChartToolTip";
 
 
 /** Area chart of applications received over time, with a period tab switcher. */

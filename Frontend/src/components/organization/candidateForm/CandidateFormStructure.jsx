@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { User, Mail, Phone, Loader2 } from "lucide-react";
 
 import Form from "./Form";
-import ResumeUploader from "./ResumeUploader";
+import ResumeUploader from "./Resumeuploader";
 import { initialCandidateFormState, validators } from "./data";
 
 

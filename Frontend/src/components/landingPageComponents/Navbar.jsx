@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import hiring360Logo from "../../assets/image-removebg-preview.png";
-import { MenuIcon, CloseIcon, ArrowRightIcon } from "./icons";
+import { MenuIcon, CloseIcon, ArrowRightIcon } from "./Icons";
 
 const links = [
   { label: "Platform", href: "#platform" },

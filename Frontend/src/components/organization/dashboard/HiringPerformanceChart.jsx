@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from "recharts";
-import ChartTooltip from "./ChartTooltip";
+import ChartTooltip from "./ChartToolTip";
 
 
 /**

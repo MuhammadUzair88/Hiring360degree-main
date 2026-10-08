@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
-import { LinkedInIcon } from "./icons";
+import { LinkedInIcon } from "./Icons";
 
 // ---------------------------------------------------------------------
 // NOTE: FacebookIcon, InstagramIcon and WhatsAppIcon are defined locally

@@ -1,6 +1,6 @@
 import React from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
-import ChartTooltip from "./ChartTooltip";
+import ChartTooltip from "./ChartToolTip";
 
 
 /**
