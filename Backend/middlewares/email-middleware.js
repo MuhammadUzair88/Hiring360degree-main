@@ -4,6 +4,7 @@ import { transporter } from "./email-config-middleware.js";
 
 async function sendEmailMessage({ from, to, subject, html, replyTo }) {
   if (process.env.RESEND_API_KEY) {
+    console.info("Email delivery provider: Resend HTTPS API");
     if (!from || from.includes("undefined")) {
       throw new Error("EMAIL_FROM must be set to a verified sender address");
     }
@@ -33,6 +34,16 @@ async function sendEmailMessage({ from, to, subject, html, replyTo }) {
     return { messageId: result.id };
   }
 
+  const missingSmtpSettings = ["EMAIL", "EMAIL_PASSWORD", "EMAIL_FROM"].filter(
+    (key) => !process.env[key]
+  );
+  if (missingSmtpSettings.length) {
+    throw new Error(
+      `SMTP configuration is missing: ${missingSmtpSettings.join(", ")}`
+    );
+  }
+
+  console.info("Email delivery provider: Gmail SMTP");
   return transporter.sendMail({ from, to, subject, html, replyTo });
 }
 
@@ -209,7 +220,12 @@ export const sendInterviewerCredentialsEmail = async ({
     return { success: true, messageId: result.messageId };
   } catch (error) {
     console.error("❌ Interviewer credentials email failed:", error);
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error.message,
+      code: error.code,
+      command: error.command,
+    };
   }
 };
 
