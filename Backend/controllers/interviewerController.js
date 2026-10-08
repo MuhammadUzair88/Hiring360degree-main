@@ -68,6 +68,7 @@ export const addInterviewer = async (req, res) => {
           message:
             "The interviewer account was not kept because the credential email could not be sent. Check the backend email configuration and try again.",
           emailStatus: "failed",
+          emailError: emailStatus.error || "The email provider did not accept the message",
         });
       }
 
@@ -85,6 +86,7 @@ export const addInterviewer = async (req, res) => {
         message:
           "The interviewer account was not kept because the credential email could not be sent. Check the backend email configuration and try again.",
         emailStatus: "failed",
+        emailError: emailError.message || "The email provider did not accept the message",
       });
     }
   } catch (error) {
