@@ -3,8 +3,8 @@ import { Briefcase, Building2, Clock, MapPin, DollarSign, CalendarDays, Loader2,
 import FormField from "./FormField";
 import FormTextInput from "./FormTextInput";
 import FormSelect from "./FormSelect";
-import FormTextarea from "./FormTextarea";
-import SkillsTagInput from "./SkillsTagInput";
+import FormTextarea from "./FormTextArea";
+import SkillsTagInput from "./SkillStagInput";
 import SegmentedOptionControl from "./SegmentedOptionControl";
 import {
   employmentTypeOptions,

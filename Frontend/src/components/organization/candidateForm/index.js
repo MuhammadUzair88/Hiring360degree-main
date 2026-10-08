@@ -5,6 +5,6 @@ export { default as StatusBadge } from "./StatusBadge";
 export { default as SubmissionSuccess } from "./SubmissionSuccess";
 export { default as CandidateFormStructure } from "./CandidateFormStructure";
 export { default as Form } from "./Form";
-export { default as ResumeUploader } from "./ResumeUploader";
+export { default as ResumeUploader } from "./Resumeuploader";
 
 export * from "./data";

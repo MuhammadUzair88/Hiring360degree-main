@@ -5,7 +5,7 @@ import { Download, Send } from "lucide-react";
 import SocialPostCopyCard from "./SocialPostCopyCard";
 import SocialPublishModal from "../../../../pages/connectSocials/SocialPublishModal";
 
-import { publishModalCopy, publishSummaryFields } from "./publishModalData";
+import { publishModalCopy, publishSummaryFields } from "./publishmodaldata";
 
 import {
   buildApplyUrl,

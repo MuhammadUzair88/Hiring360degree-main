@@ -1,4 +1,4 @@
-import "./intelligenceanimations.css";
+import "./Intelligenceanimations.css";
 import IntelligenceHeader from "./IntelligenceHeader";
 import IntelligencePipeline from "./IntelligencePipeline";
 import CandidateMatchShowcase from "./CandidateMatchShowcase";
