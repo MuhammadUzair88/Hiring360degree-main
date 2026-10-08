@@ -34,7 +34,7 @@ export const ADVERTISEMENT_STATUS = {
 export const ROUTES = {
   LOGIN: "/login",
   REGISTER: "/register",
-  DASHBOARD: "/",
+  DASHBOARD: "/dashboard",
   INTERVIEWER_LOGIN: "/interviewers/login",
   INTERVIEWER_DASHBOARD: "/interviewers/dashboard",
 };

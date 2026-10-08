@@ -255,7 +255,7 @@ export default function Login() {
 
       if (result.success) {
         const redirectTo =
-          location.state?.from?.pathname || "/";
+          location.state?.from?.pathname || "/dashboard";
 
         navigate(redirectTo, {
           replace: true,
@@ -294,7 +294,7 @@ export default function Login() {
 
       if (result.success) {
         toast.success("Organization workspace created.");
-        navigate("/", {
+        navigate("/dashboard", {
           replace: true,
         });
       } else {

@@ -36,10 +36,11 @@ import Login from "./pages/Login";
 import SocialAccountManager from "./pages/connectSocials/SocialAccountManager";
 import SocialConnectCallback from "./pages/connectSocials/SocialConnectCallback";
 
-function App() {
+function App() {                            
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/landing-page" element={<Navigate to="/" replace />} />
       {/* ───────────────────── Organization auth (guest only) ───────────────────── */}
       <Route
         path="/login"
@@ -78,7 +79,7 @@ function App() {
       {/* ───────────────────── Organization workspace (protected) ───────────────────── */}
       <Route element={<OrganizationRoute />}>
         <Route element={<MainLayout />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/interviewer" element={<Interviewer />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/advertisement" element={<Advertisement />} />

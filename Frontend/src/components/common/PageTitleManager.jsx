@@ -156,8 +156,12 @@ const PAGE_TITLES = [
   // =====================================================
 
   {
-    path: "/",
+    path: "/dashboard",
     title: "Dashboard",
+  },
+  {
+    path: "/",
+    title: "Hiring360",
   },
 ];
 
@@ -190,7 +194,7 @@ function getFallbackTitle(pathname) {
     .filter(Boolean);
 
   if (segments.length === 0) {
-    return "Dashboard";
+    return "Hiring360";
   }
 
   /*

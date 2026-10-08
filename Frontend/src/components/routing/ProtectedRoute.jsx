@@ -43,7 +43,7 @@ export function InterviewerRoute() {
   return <Outlet />;
 }
 
-export function GuestOnlyRoute({ children, redirectTo = "/" }) {
+export function GuestOnlyRoute({ children, redirectTo = "/dashboard" }) {
   const { isLoggedIn } = useAuth();
   if (isLoggedIn) return <Navigate to={redirectTo} replace />;
   return children;

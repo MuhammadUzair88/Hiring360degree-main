@@ -15,10 +15,9 @@ import {
 import logoFull from "../../assets/image-removebg-preview.png";
 import logoIcon from "../../assets/logo.svg";
 
-// Primary navigation. "end: true" on Dashboard keeps it from matching
-// every nested route (since "/" is a prefix of everything).
+// Primary organization navigation.
 const navItems = [
-  { label: "Dashboard", to: "/", icon: LayoutDashboard, end: true },
+  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, end: true },
   { label: "Job Advertisement", to: "/advertisement", icon: Megaphone },
   { label: "Interviewer", to: "/interviewer", icon: Users },
   { label: "Connect Account", to: "/connect-account", icon: Link2 },
