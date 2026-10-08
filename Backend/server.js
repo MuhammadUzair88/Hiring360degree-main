@@ -2,7 +2,7 @@ import express from "express";
 import "dotenv/config";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
-import advertisementRoutes from "./routes/advertisementRoutes.js";
+import advertisementRoutes from "./routes/AdvertisementRoutes.js";
 import applicationRoutes from "./routes/applicationRoutes.js";
 import candidateRoutes from "./routes/candidateRoutes.js"
 import roundRoutes from "./routes/interviewPipelineRoutes.js";
