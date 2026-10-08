@@ -45,35 +45,49 @@ export const addInterviewer = async (req, res) => {
       password: hashedPassword,
     });
 
-    // 📧 Email the interviewer their credentials + dashboard link
-    // (Don't fail account creation if the email fails — just report it)
-    let emailStatus = { success: false };
-    try {
-      const organization = await Organization.findById(organizationId);
-
-      emailStatus = await sendInterviewerCredentialsEmail({
-        interviewerEmail: interviewer.email,
-        interviewerName: interviewer.name,
-        plainPassword,
-        orgName: organization?.name || "Our Company",
-        organizationLogo: organization?.logo || null,
-        dashboardLink: INTERVIEWER_DASHBOARD_LINK,
-        supportEmail: organization?.email || process.env.EMAIL_FROM,
-      });
-    } catch (emailError) {
-      console.error("❌ Failed to send interviewer credentials email:", emailError);
-    }
-
     // Never send the password (plain or hashed) back in the API response
     const { password, ...interviewerSafe } = interviewer.toObject();
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
-      message: emailStatus.success
-        ? "Interviewer added successfully and credentials emailed"
-        : "Interviewer added successfully, but the credentials email failed to send",
+      message: "Interviewer added successfully. Credential email is being sent.",
+      emailStatus: "sending",
       interviewer: interviewerSafe,
     });
+
+    // Sending email can take a long time or time out when the SMTP provider is
+    // unreachable. Do it after responding so the create request is not held
+    // open while the database record has already been saved.
+    setImmediate(() => {
+      void (async () => {
+        try {
+          const organization = await Organization.findById(organizationId);
+          const emailStatus = await sendInterviewerCredentialsEmail({
+            interviewerEmail: interviewer.email,
+            interviewerName: interviewer.name,
+            plainPassword,
+            orgName: organization?.name || "Our Company",
+            organizationLogo: organization?.logo || null,
+            dashboardLink: INTERVIEWER_DASHBOARD_LINK,
+            supportEmail: organization?.email || process.env.EMAIL_FROM,
+          });
+
+          if (!emailStatus.success) {
+            console.error(
+              "❌ Interviewer was created, but credential email failed:",
+              emailStatus.error
+            );
+          }
+        } catch (emailError) {
+          console.error(
+            "❌ Interviewer was created, but credential email failed:",
+            emailError
+          );
+        }
+      })();
+    });
+
+    return;
   } catch (error) {
     console.error("Add Interviewer Error:", error);
 
