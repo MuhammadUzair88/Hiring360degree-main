@@ -103,7 +103,10 @@ export const addInterviewer = async (req, res) => {
 // =========================
 export const loginInterviewer = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    // Generated interviewer passwords contain no spaces. Trimming handles
+    // accidental leading/trailing whitespace when credentials are pasted.
+    const password = String(req.body?.password || "").trim();
 
     if (!email || !password) {
       return res.status(400).json({
@@ -111,19 +114,25 @@ export const loginInterviewer = async (req, res) => {
         message: "Email and password are required",
       });
     }
-    const interviewer = await Interviewer.findOne({
-      email: email.toLowerCase(),
-    }).select("+password");
+    // Email is unique per organization, not globally. Check every matching
+    // account so an older account in another organization cannot shadow the
+    // account whose password the interviewer received.
+    const matchingEmailAccounts = await Interviewer.find({ email }).select(
+      "+password"
+    );
 
-    if (!interviewer || !interviewer.password) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password",
-      });
+    let interviewer = null;
+    for (const candidate of matchingEmailAccounts) {
+      if (
+        candidate.password &&
+        (await bcrypt.compare(password, candidate.password))
+      ) {
+        interviewer = candidate;
+        break;
+      }
     }
 
-    const isMatch = await bcrypt.compare(password, interviewer.password);
-    if (!isMatch) {
+    if (!interviewer) {
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
