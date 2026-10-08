@@ -57,7 +57,7 @@ export const addInterviewer = async (req, res) => {
         orgName: organization?.name || "Our Company",
         organizationLogo: organization?.logo || null,
         dashboardLink: INTERVIEWER_DASHBOARD_LINK,
-        supportEmail: organization?.email || process.env.EMAIL_FROM,
+        supportEmail: organization?.email || process.env.EMAIL_FROM || process.env.EMAIL,
       });
 
       if (!emailStatus.success) {

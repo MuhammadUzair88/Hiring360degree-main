@@ -2,11 +2,13 @@
 import { candidateInterviewTemplate, interviewerInterviewTemplate, offerLetterTemplate } from "../utils/templates/emailTemplate.js";
 import { transporter } from "./email-config-middleware.js";
 
+const senderAddress = () => process.env.EMAIL_FROM || process.env.EMAIL;
+
 async function sendEmailMessage({ from, to, subject, html, replyTo }) {
   if (process.env.RESEND_API_KEY) {
     console.info("Email delivery provider: Resend HTTPS API");
     if (!from || from.includes("undefined")) {
-      throw new Error("EMAIL_FROM must be set to a verified sender address");
+      throw new Error("Set EMAIL_FROM (or EMAIL) to a verified sender address");
     }
 
     const response = await fetch("https://api.resend.com/emails", {
@@ -34,9 +36,10 @@ async function sendEmailMessage({ from, to, subject, html, replyTo }) {
     return { messageId: result.id };
   }
 
-  const missingSmtpSettings = ["EMAIL", "EMAIL_PASSWORD", "EMAIL_FROM"].filter(
+  const missingSmtpSettings = ["EMAIL", "EMAIL_PASSWORD"].filter(
     (key) => !process.env[key]
   );
+  if (!senderAddress()) missingSmtpSettings.push("EMAIL_FROM or EMAIL");
   if (missingSmtpSettings.length) {
     throw new Error(
       `SMTP configuration is missing: ${missingSmtpSettings.join(", ")}`
@@ -112,14 +115,14 @@ export const sendInterviewEmails = async ({
 
     const [candidateResult, interviewerResult] = await Promise.all([
       sendEmailMessage({
-        from: `"${orgName} Hiring Team" <${process.env.EMAIL_FROM}>`,
+        from: `"${orgName} Hiring Team" <${senderAddress()}>`,
         to: candidateEmail,
         subject: `Interview Invitation: ${jobTitle} - ${roundName}`,
         html: candidateHtml,
         replyTo: supportEmail,
       }),
       sendEmailMessage({
-        from: `"${orgName} Recruitment System" <${process.env.EMAIL_FROM}>`,
+        from: `"${orgName} Recruitment System" <${senderAddress()}>`,
         to: interviewerEmail,
         subject: `Interview Scheduled: ${candidateName} - ${jobTitle} (${roundName})`,
         html: interviewerHtml,
@@ -208,7 +211,7 @@ export const sendInterviewerCredentialsEmail = async ({
     `;
 
     const result = await sendEmailMessage({
-      from: `"${orgName} Recruitment System" <${process.env.EMAIL_FROM}>`,
+      from: `"${orgName} Recruitment System" <${senderAddress()}>`,
       to: interviewerEmail,
       subject: `Your Interviewer Account for ${orgName}`,
       html,
@@ -442,12 +445,12 @@ export const sendOfferLetterEmail = async ({
 </html>`;
 
     const result = await sendEmailMessage({
-      from: `"${orgName}" <${process.env.EMAIL_FROM}>`,
+      from: `"${orgName}" <${senderAddress()}>`,
       to: candidateEmail,
       subject: `Offer Letter: ${jobTitle || "Position"} — ${orgName}`,
       html,
       attachments,
-      replyTo: supportEmail || process.env.EMAIL_FROM,
+      replyTo: supportEmail || senderAddress(),
     });
 
     console.log("✅ Offer letter email sent:", result.messageId);
