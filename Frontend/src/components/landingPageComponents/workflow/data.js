@@ -53,7 +53,7 @@ export const workflowFeatures = [
     eyebrow: "One-Click Distribution",
     title: "Publish everywhere, the moment you post.",
     description:
-      "Stop copy-pasting job ads across five different tabs. Write the role once and Hiring360° drafts a polished pamphlet, then pushes it to every connected social and professional network at the same time.",
+      "Stop copy-pasting job ads across five different tabs. Write the role once and InterVue360 drafts a polished pamphlet, then pushes it to every connected social and professional network at the same time.",
     bullets: [
       "Auto-publish to every connected social channel",
       "Branded, on-brand job pamphlets generated automatically",
@@ -98,7 +98,7 @@ export const workflowFeatures = [
     eyebrow: "Online Interview Platform",
     title: "Run the entire interview from one tab.",
     description:
-      "Conduct the interview inside Hiring360° itself. Candidate profile, resume, and role scorecard sit next to the call, so interviewers evaluate in the moment instead of piecing it together after.",
+      "Conduct the interview inside InterVue360 itself. Candidate profile, resume, and role scorecard sit next to the call, so interviewers evaluate in the moment instead of piecing it together after.",
     bullets: [
       "Built-in video interviewing, no extra app needed",
       "Candidate profile and prep notes side-by-side with the call",

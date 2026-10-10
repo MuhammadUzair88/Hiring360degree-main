@@ -58,102 +58,205 @@ export default function PublishSuccessModal({
     downloadDataUrl(pamphletImageDataUrl, filename);
   };
 
-  return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4">
-        <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl overflow-hidden shadow-xl">
-          {/* HERO */}
+  // return (
+  //   <>
+  //     <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4">
+  //       <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl overflow-hidden shadow-xl">
+  //         {/* HERO */}
 
-          <div className="relative bg-primary-800 px-8 py-10 overflow-hidden">
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
-                backgroundSize: "28px 28px",
-              }}
-            />
+  //         <div className="relative bg-primary-800 px-8 py-10 overflow-hidden">
+  //           <div
+  //             className="absolute inset-0 opacity-20"
+  //             style={{
+  //               backgroundImage:
+  //                 "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
+  //               backgroundSize: "28px 28px",
+  //             }}
+  //           />
 
-            <div className="relative text-center text-white">
-              <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-white text-primary-800 flex items-center justify-center">
-                ✓
-              </div>
+  //           <div className="relative text-center text-white">
+  //             <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-white text-primary-800 flex items-center justify-center">
+  //               ✓
+  //             </div>
 
-              <h2 className="text-3xl font-bold">{publishModalCopy.title}</h2>
+  //             <h2 className="text-3xl font-bold">{publishModalCopy.title}</h2>
 
-              <p className="mt-2 text-white/80">{publishModalCopy.subtitle}</p>
+  //             <p className="mt-2 text-white/80">{publishModalCopy.subtitle}</p>
+  //           </div>
+  //         </div>
+
+  //         <div className="px-8 py-8 overflow-y-auto">
+  //           {/* SUMMARY */}
+
+  //           <div className="px-6 py-6 bg-primary-50 rounded-xl border border-secondary-300 grid grid-cols-1 sm:grid-cols-3 gap-4">
+  //             {publishSummaryFields.map((field) => (
+  //               <div key={field.key} className="flex flex-col gap-1">
+  //                 <span className="text-gray-500 text-xs font-semibold uppercase tracking-wide">
+  //                   {field.label}
+  //                 </span>
+
+  //                 <span className="text-slate-900 text-base font-semibold">
+  //                   {summaryValues[field.key]}
+  //                 </span>
+  //               </div>
+  //             ))}
+  //           </div>
+
+  //           {/* COPY */}
+
+  //           <div className="pt-6">
+  //             <SocialPostCopyCard text={postText} />
+  //           </div>
+
+  //           {/* SOCIAL */}
+
+  //           <div className="pt-6">
+  //             <button
+  //               type="button"
+  //               onClick={() => setSocialModalOpen(true)}
+  //               className="w-full py-4 rounded-xl bg-primary-800 text-white font-semibold flex items-center justify-center gap-2 hover:bg-primary-700"
+  //             >
+  //               <Send className="w-5 h-5" />
+  //               Publish to Social Media
+  //             </button>
+  //           </div>
+
+  //           {/* ACTIONS */}
+
+  //           <div className="pt-6 flex flex-col sm:flex-row gap-3">
+  //             <button
+  //               type="button"
+  //               onClick={handleDownloadImage}
+  //               disabled={!pamphletImageDataUrl}
+  //               className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl border border-primary-800 text-primary-800 font-medium disabled:opacity-50"
+  //             >
+  //               <Download className="w-4 h-4" />
+  //               Download Campaign Image
+  //             </button>
+
+  //             <button
+  //               type="button"
+  //               onClick={onReturnToDashboard}
+  //               className="flex-1 py-3 rounded-xl bg-primary-800 text-white font-medium"
+  //             >
+  //               Return to Dashboard
+  //             </button>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </div>
+
+  //     <SocialPublishModal
+  //       isOpen={socialModalOpen}
+  //       onClose={() => setSocialModalOpen(false)}
+  //       formData={formData}
+  //       organizationName={organizationName}
+  //       pamphletImageDataUrl={pamphletImageDataUrl}
+  //       jobId={jobId}
+  //     />
+  //   </>
+  // );
+return (
+  <>
+    <div
+  className={`fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-2 sm:p-4 ${
+    socialModalOpen ? "invisible pointer-events-none" : ""
+  }`}
+>
+      <div className="bg-white w-full max-w-3xl max-h-[92dvh] rounded-2xl overflow-hidden shadow-xl flex flex-col">
+        {/* HERO */}
+        <div className="relative bg-primary-800 px-4 py-6 sm:px-8 sm:py-10 overflow-hidden shrink-0">
+          <div
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
+              backgroundSize: "28px 28px",
+            }}
+          />
+
+          <div className="relative text-center text-white">
+            <div className="mx-auto mb-3 sm:mb-4 w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-white text-primary-800 flex items-center justify-center">
+              ✓
             </div>
+
+            <h2 className="text-2xl sm:text-3xl font-semibold leading-tight">
+              {publishModalCopy.title}
+            </h2>
+
+            <p className="mt-2 text-sm sm:text-base text-white/80">
+              {publishModalCopy.subtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* SCROLLABLE BODY */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5 sm:px-8 sm:py-8">
+          {/* SUMMARY */}
+          <div className="px-4 py-4 sm:px-6 sm:py-6 bg-primary-50 rounded-xl border border-secondary-300 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {publishSummaryFields.map((field) => (
+              <div key={field.key} className="flex flex-col gap-1 min-w-0">
+                <span className="text-gray-500 text-xs font-semibold uppercase tracking-wide">
+                  {field.label}
+                </span>
+
+                <span className="text-slate-900 text-base font-semibold break-words">
+                  {summaryValues[field.key]}
+                </span>
+              </div>
+            ))}
           </div>
 
-          <div className="px-8 py-8 overflow-y-auto">
-            {/* SUMMARY */}
+          {/* COPY */}
+          <div className="pt-5 sm:pt-6 min-w-0 break-words">
+            <SocialPostCopyCard text={postText} />
+          </div>
 
-            <div className="px-6 py-6 bg-primary-50 rounded-xl border border-secondary-300 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {publishSummaryFields.map((field) => (
-                <div key={field.key} className="flex flex-col gap-1">
-                  <span className="text-gray-500 text-xs font-semibold uppercase tracking-wide">
-                    {field.label}
-                  </span>
+          {/* SOCIAL */}
+          <div className="pt-5 sm:pt-6">
+            <button
+              type="button"
+              onClick={() => setSocialModalOpen(true)}
+              className="w-full py-3 sm:py-4 rounded-xl bg-primary-800 text-white font-semibold flex items-center justify-center gap-2 hover:bg-primary-700"
+            >
+              <Send className="w-5 h-5" />
+              Publish to Social Media
+            </button>
+          </div>
 
-                  <span className="text-slate-900 text-base font-semibold">
-                    {summaryValues[field.key]}
-                  </span>
-                </div>
-              ))}
-            </div>
+          {/* ACTIONS */}
+          <div className="pt-5 sm:pt-6 flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={handleDownloadImage}
+              disabled={!pamphletImageDataUrl}
+              className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl border border-primary-800 text-primary-800 font-medium disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" />
+              Download Campaign Image
+            </button>
 
-            {/* COPY */}
-
-            <div className="pt-6">
-              <SocialPostCopyCard text={postText} />
-            </div>
-
-            {/* SOCIAL */}
-
-            <div className="pt-6">
-              <button
-                type="button"
-                onClick={() => setSocialModalOpen(true)}
-                className="w-full py-4 rounded-xl bg-primary-800 text-white font-semibold flex items-center justify-center gap-2 hover:bg-primary-700"
-              >
-                <Send className="w-5 h-5" />
-                Publish to Social Media
-              </button>
-            </div>
-
-            {/* ACTIONS */}
-
-            <div className="pt-6 flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={handleDownloadImage}
-                disabled={!pamphletImageDataUrl}
-                className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl border border-primary-800 text-primary-800 font-medium disabled:opacity-50"
-              >
-                <Download className="w-4 h-4" />
-                Download Campaign Image
-              </button>
-
-              <button
-                type="button"
-                onClick={onReturnToDashboard}
-                className="flex-1 py-3 rounded-xl bg-primary-800 text-white font-medium"
-              >
-                Return to Dashboard
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onReturnToDashboard}
+              className="flex-1 py-3 rounded-xl bg-primary-800 text-white font-medium"
+            >
+              Return to Dashboard
+            </button>
           </div>
         </div>
       </div>
+    </div>
 
-      <SocialPublishModal
-        isOpen={socialModalOpen}
-        onClose={() => setSocialModalOpen(false)}
-        formData={formData}
-        organizationName={organizationName}
-        pamphletImageDataUrl={pamphletImageDataUrl}
-        jobId={jobId}
-      />
-    </>
-  );
+    <SocialPublishModal
+      isOpen={socialModalOpen}
+      onClose={() => setSocialModalOpen(false)}
+      formData={formData}
+      organizationName={organizationName}
+      pamphletImageDataUrl={pamphletImageDataUrl}
+      jobId={jobId}
+    />
+  </>
+);
+
 }

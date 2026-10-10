@@ -95,8 +95,8 @@ function BrandPanel() {
           className="w-fit rounded-xl bg-white px-4 py-3 shadow-lg shadow-black/10 transition hover:-translate-y-0.5"
         >
           <img
-            src="/logofull.svg"
-            alt="Hiring360"
+            src="/logofullbgs.svg"
+            alt="InterVue360"
             className="h-9 w-auto object-contain"
           />
         </Link>
@@ -157,7 +157,7 @@ function BrandPanel() {
 
         <div className="flex items-center gap-2 text-xs text-primary-200">
           <ShieldCheck size={14} />
-          Secure Hiring360 organization access
+          Secure InterVue360 organization access
         </div>
       </div>
     </aside>
@@ -324,8 +324,8 @@ export default function Login() {
               className="mb-9 block w-fit lg:hidden"
             >
               <img
-                src="/logofullbg.png"
-                alt="Hiring360"
+                src="/logofullbgs.svg"
+                alt="InterVue360"
                 className="h-11 w-auto object-contain"
               />
             </Link>
@@ -749,7 +749,7 @@ export default function Login() {
             <div className="mt-6 flex flex-col items-center gap-2 text-center text-xs text-gray-400">
               <p className="flex items-center gap-1.5">
                 <ShieldCheck size={13} />
-                Secure access powered by Hiring360
+                Secure access powered by InterVue360
               </p>
 
               <p>

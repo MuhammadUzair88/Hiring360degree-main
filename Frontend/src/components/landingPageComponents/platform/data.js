@@ -23,7 +23,7 @@ export const platformHeading = {
 };
 
 export const platformSubheading =
-  "Hiring360° unifies sourcing, screening, scheduling, and offers into a " +
+  "InterVue360 unifies sourcing, screening, scheduling, and offers into a " +
   "single cinematic system — orchestrated by AI, controlled by you.";
 
 export const platformTrustLine =

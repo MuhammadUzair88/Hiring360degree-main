@@ -15,7 +15,9 @@ import { useJob } from "../../../../context/JobContext";
  */
 export default function JobOverview() {
   const navigate = useNavigate();
-  const { job, error,pamphlet } = useJob();
+  // const { job, error,pamphlet } = useJob();
+  const { job, error, pamphlet: rawPamphlet } = useJob();
+const pamphlet = rawPamphlet ?? {};
   const [showShareModal, setShowShareModal] = useState(false);
 
   if (job === undefined) return <JobOverviewSkeleton />;
@@ -47,7 +49,8 @@ export default function JobOverview() {
           onEdit={() => navigate(`/advertisement/edit/${job._id}`)}
           onShare={() => setShowShareModal(true)}
         />
-        <JobOverviewAssetPanel job={job} pamphlet={pamphlet} />
+        {/* <JobOverviewAssetPanel job={job} pamphlet={pamphlet} /> */}
+        <JobOverviewAssetPanel job={job} pamphlet={rawPamphlet} />  
       </div>
 
       <JobOverviewDescriptionCard job={job} />
@@ -58,7 +61,8 @@ export default function JobOverview() {
         onReturnToDashboard={() => setShowShareModal(false)}
         formData={job}
         organizationName={job.organization?.name || "Your Company"}
-        pamphletImageDataUrl={pamphlet.generatedImageUrl}
+        // pamphletImageDataUrl={pamphlet.generatedImageUrl}
+        pamphletImageDataUrl={pamphlet?.generatedImageUrl}
         jobId={job._id}
       />
     </div>

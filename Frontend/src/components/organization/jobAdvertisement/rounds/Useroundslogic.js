@@ -485,7 +485,25 @@ const reviewInterviews = activeRoundSchedules.filter(
   // current round — there's no dedicated "skip straight to offer" action,
   // so this accepts the current round like normal and lets the pipeline's
   // own "last round" check decide whether that means an offer.
-  const directOfferCandidate = async (scheduleId) => acceptCandidate(scheduleId);
+  // const directOfferCandidate = async (scheduleId) => acceptCandidate(scheduleId);
+  const directOfferCandidate = async (scheduleId) => {
+  const schedule = scheduledInterviews.find((item) => item.id === scheduleId);
+  if (!schedule) return;
+  try {
+    await interviewService.decideRoundOutcome(scheduleId, { decision: "directOffer" });
+    await Promise.all([
+      loadSchedules(),
+      loadRoundPoolCounts(rounds.length),
+    ]);
+    setCandidateOutcomes((prev) => ({ ...prev, [schedule.candidateId]: CANDIDATE_OUTCOME.OFFERED }));
+    toast.success(`${schedule.candidateName} is ready for an offer.`);
+    closeFeedback();
+    navigate(`/advertisement/job/${jobId}/offer-letter`);
+  } catch (error) {
+    toast.error(extractErrorMessage(error, "Failed to send this candidate to the offer stage."));
+    closeFeedback();
+  }
+};
 
   return {
     // pipeline

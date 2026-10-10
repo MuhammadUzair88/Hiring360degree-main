@@ -49,7 +49,7 @@ function SecondaryLayoutContent() {
           setMainNavOpen(false)
         }
       />
-
+{/* 
       <SecondarySidebar
         jobId={job?._id || id}
         job={job}
@@ -67,7 +67,19 @@ function SecondaryLayoutContent() {
             "/advertisement/add"
           )
         }
-      />
+      /> */}
+{(job?._id || id) && (
+  <SecondarySidebar
+    jobId={job?._id || id}
+    job={job}
+    applicantCount={applicantCount ?? job?.applicantsCount ?? 0}
+    mobileOpen={jobNavOpen}
+    onClose={() => setJobNavOpen(false)}
+    onNewJobPosting={() => navigate("/advertisement/add")}
+  />
+)}
+
+
 
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
         <SecondaryHeader
