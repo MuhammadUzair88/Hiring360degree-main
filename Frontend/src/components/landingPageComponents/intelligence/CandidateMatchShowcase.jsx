@@ -107,7 +107,7 @@ export default function CandidateMatchShowcase() {
 
         {/* AI engine checklist — floating cards */}
         <div className="relative z-10 flex flex-col items-center gap-5 lg:pt-1">
-          <PanelLabel icon={Sparkles}>Hiring360 AI Engine</PanelLabel>
+          <PanelLabel icon={Sparkles}>InterVue360 AI Engine</PanelLabel>
 
           <div className="w-full lg:w-56 flex flex-col gap-4">
             {engineChecklist.map(({ icon: Icon, label }, i) => (

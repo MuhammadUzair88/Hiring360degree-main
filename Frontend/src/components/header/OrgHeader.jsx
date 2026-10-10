@@ -16,7 +16,7 @@ import {
   Inbox,
   X,
 } from "lucide-react";
-import logoIcon from "../../assets/logo.svg";
+import logoIcon from "../../assets/logos.svg";
 import headerService from "../../services/headerService";
 import { extractErrorMessage } from "../../services/apiClient";
 import { formatRelativeTime } from "../../utils/formatters";

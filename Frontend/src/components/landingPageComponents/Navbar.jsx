@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import hiring360Logo from "../../assets/image-removebg-preview.png";
+import hiring360Logo from "../../assets/images-removebg-preview.png";
 import { MenuIcon, CloseIcon, ArrowRightIcon } from "./Icons";
 
 const links = [
@@ -90,7 +90,7 @@ export function Navbar() {
             <img
               src={hiring360Logo}
               alt="Hiring360"
-              className="h-9 sm:h-10 w-auto object-contain select-none"
+              className="h-12 sm:h-16 w-auto object-contain select-none"
               loading="eager"
               draggable={false}
             />

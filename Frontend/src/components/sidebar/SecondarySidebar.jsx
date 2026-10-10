@@ -215,7 +215,6 @@ export default function SecondarySidebar({
           bg-secondary-100
           border-r border-secondary-300
           flex flex-col justify-between
-          z-50
           ${isOpen ? "is-open" : ""}
           ${collapsed ? "is-collapsed" : ""}
         `}

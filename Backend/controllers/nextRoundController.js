@@ -4,15 +4,22 @@ import { InterviewPipeline } from "../models/interviewPipelineModel.js";
 export const decideRoundOutcome = async (req, res) => {
   try {
     const { scheduleId } = req.params;
-    const { decision } = req.body; // "accept" | "reject"
+    const { decision } = req.body; // "accept" | "reject" | "directOffer"
     const organizationId = req.organizationId;
 
-    if (!["accept", "reject"].includes(decision)) {
-      return res.status(400).json({
-        success: false,
-        message: "decision must be 'accept' or 'reject'",
-      });
-    }
+    // if (!["accept", "reject"].includes(decision)) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "decision must be 'accept' or 'reject'",
+    //   });
+    // }
+
+    if (!["accept", "reject", "directOffer"].includes(decision)) {
+  return res.status(400).json({
+    success: false,
+    message: "decision must be 'accept', 'reject' or 'directOffer'",
+  });
+}
 
     const interview = await ScheduledInterview.findById(scheduleId);
     if (!interview) {
@@ -66,6 +73,34 @@ export const decideRoundOutcome = async (req, res) => {
         nextRoundName: null,
       });
     }
+
+    // ─────────────────────────
+// DIRECT OFFER (skip remaining rounds)
+// ─────────────────────────
+if (decision === "directOffer") {
+  const pipeline = await InterviewPipeline.findOne({
+    advertisementId: application.advertisementId,
+    organizationId,
+  });
+  const totalRounds = pipeline?.rounds?.length || 0;
+
+  roundResult.status = "Passed";
+  application.currentRound = totalRounds;
+  application.status = "Offered";
+  interview.status = "Completed";
+
+  await application.save();
+  await interview.save();
+
+  return res.status(200).json({
+    success: true,
+    message: "Candidate moved directly to the offer stage",
+    application,
+    isOffered: true,
+    nextRoundIndex: null,
+    nextRoundName: null,
+  });
+}
 
     // ─────────────────────────
     // ACCEPT

@@ -12,8 +12,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 // Adjust these two paths if your assets folder lives somewhere else.
-import logoFull from "../../assets/image-removebg-preview.png";
-import logoIcon from "../../assets/logo.svg";
+import logoFull from "../../assets/images-removebg-preview.png";
+import logoIcon from "../../assets/logos.svg";
 
 // Primary organization navigation.
 const navItems = [
@@ -118,7 +118,7 @@ export default function MainSidebar({
             <img
               src={logoFull}
               alt="Hiring 360"
-              className="org-name h-8 w-full shrink-0"
+              className="org-name h-8 w-full shrink-0 "
             />
           </div>
           <button

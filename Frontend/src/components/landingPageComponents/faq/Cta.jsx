@@ -13,7 +13,7 @@ export function CTA() {
               Ready to transform your hiring?
             </h2>
             <p className="text-lg text-primary-100 max-w-xl mx-auto mb-10">
-              Join thousands of companies already using Hiring360° to build their dream teams.
+              Join thousands of companies already using InterVue360 to build their dream teams.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <a

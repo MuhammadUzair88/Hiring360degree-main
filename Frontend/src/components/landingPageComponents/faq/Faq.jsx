@@ -3,11 +3,11 @@ import { useState } from "react";
 const faqs = [
   {
     q: "How accurate is the AI resume scoring?",
-    a: "Hiring360°'s scoring engine analyzes skills, experience, and role fit, producing a 0–100 compatibility score that consistently outperforms keyword-based screening. You can always override or recalibrate it.",
+    a: "InterVue360's scoring engine analyzes skills, experience, and role fit, producing a 0–100 compatibility score that consistently outperforms keyword-based screening. You can always override or recalibrate it.",
   },
   {
     q: "Does it integrate with Google Meet and Zoom?",
-    a: "Yes. When you schedule an interview, Hiring360° auto-generates a meeting link and emails it to the candidate and interviewer within 60 seconds.",
+    a: "Yes. When you schedule an interview, InterVue360 auto-generates a meeting link and emails it to the candidate and interviewer within 60 seconds.",
   },
   {
     q: "Is my data secure?",
@@ -50,7 +50,7 @@ export function Faq() {
             Questions, <span className="text-primary-700">answered.</span>
           </h2>
           <p className="mt-3 text-base text-neutral-600">
-            Everything you need to know before you bring Hiring360° to your team.
+            Everything you need to know before you bring InterVue360 to your team.
           </p>
         </div>
 

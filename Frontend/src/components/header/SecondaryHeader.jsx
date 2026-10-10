@@ -1,7 +1,7 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
 import { Search, SlidersHorizontal, Menu, PanelLeft, Download } from "lucide-react";
-import logoIcon from "../../assets/logo.svg";
+import logoIcon from "../../assets/logos.svg";
 
 const DEFAULT_CTA_LABEL = "Download";
 

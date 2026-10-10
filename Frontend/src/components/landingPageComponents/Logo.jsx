@@ -1,4 +1,4 @@
-import hiring360Logo from "../../assets/image-removebg-preview.png";
+import hiring360Logo from "../../assets/images-removebg-preview.png";
 
 /**
  * Brand mark used in the Navbar and Footer.
