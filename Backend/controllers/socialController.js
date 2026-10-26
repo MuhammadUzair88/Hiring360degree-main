@@ -1,6 +1,7 @@
 import { Organization } from "../models/organizationModel.js";
 import {
   createZernioProfile,
+  getZernioProfiles,
   getZernioConnectUrl,
   getZernioAccounts,
   getZernioAccountHealth,
@@ -25,6 +26,35 @@ const SUPPORTED_PLATFORMS = [
   "bluesky",
 ];
 
+// Zernio profile IDs are scoped to the API key's team. Check a saved ID
+// against profiles visible to the currently configured key before reusing it.
+const getOrCreateOrganizationProfile = async (organization) => {
+  const result = await getZernioProfiles();
+  const profiles = Array.isArray(result?.profiles) ? result.profiles : [];
+  const savedProfileIsAccessible = profiles.some(
+    (profile) => (profile?._id || profile?.id) === organization.zernioProfileId
+  );
+
+  if (organization.zernioProfileId && savedProfileIsAccessible) {
+    return { profileId: organization.zernioProfileId, created: false };
+  }
+
+  // Include the organization ID so profile names remain unique in Zernio.
+  const created = await createZernioProfile({
+    name: `Hiring360 ${organization._id}`,
+    description: `Hiring360 social profile for ${organization.name}`,
+  });
+  const profileId = created?.profile?._id || created?.profile?.id;
+
+  if (!profileId) {
+    throw new Error("Zernio did not return a profile ID");
+  }
+
+  organization.zernioProfileId = profileId;
+  await organization.save();
+  return { profileId, created: true };
+};
+
 
 // ======================================
 // Ensure organization has Zernio profile
@@ -45,31 +75,9 @@ export const ensureZernioProfile = async (req, res) => {
       });
     }
 
-    if (organization.zernioProfileId) {
-      return res.status(200).json({
-        success: true,
-        profileId: organization.zernioProfileId,
-      });
-    }
+    const { profileId, created } = await getOrCreateOrganizationProfile(organization);
 
-    const result = await createZernioProfile({
-      name: organization.name,
-      description: `Hiring360 social profile for ${organization.name}`,
-    });
-
-    const profileId = result?.profile?._id;
-
-    if (!profileId) {
-      throw new Error(
-        "Zernio did not return a profile ID"
-      );
-    }
-
-    organization.zernioProfileId = profileId;
-
-    await organization.save();
-
-    return res.status(201).json({
+    return res.status(created ? 201 : 200).json({
       success: true,
       profileId,
     });
@@ -118,27 +126,7 @@ export const connectSocialAccount = async (req, res) => {
       });
     }
 
-    let profileId = organization.zernioProfileId;
-
-    // Create profile automatically
-    if (!profileId) {
-      const result = await createZernioProfile({
-        name: organization.name,
-        description: `Hiring360 social profile for ${organization.name}`,
-      });
-
-      profileId = result?.profile?._id;
-
-      if (!profileId) {
-        throw new Error(
-          "Could not create Zernio profile"
-        );
-      }
-
-      organization.zernioProfileId = profileId;
-
-      await organization.save();
-    }
+    const { profileId } = await getOrCreateOrganizationProfile(organization);
 
     const redirectUrl =
       `${FRONTEND_URL}/organization/social/callback`;

@@ -17,6 +17,10 @@ import dashboardRoutes from './routes/orgDashboardRoutes.js';
 import socialRoutes from "./routes/socialRoutes.js";
 import headerRoutes from "./routes/headerRoutes.js";
 
+import dns from "node:dns";
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
 const app = express();
 const port = process.env.PORT || 3000;
 // deploying the application

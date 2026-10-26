@@ -23,6 +23,11 @@ export const createZernioProfile = async ({
   return response.data;
 };
 
+export const getZernioProfiles = async () => {
+  const response = await zernio.get("/profiles");
+  return response.data;
+};
+
 export const getZernioConnectUrl = async ({
   platform,
   profileId,
